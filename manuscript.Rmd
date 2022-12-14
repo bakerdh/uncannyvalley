@@ -1,0 +1,262 @@
+---
+title: "Uncanny Valley"
+author: "Daniel Baker"
+date: "`r Sys.Date()`"
+output:
+  bookdown::pdf_document2:
+    fig_caption: yes
+    toc: no
+    keep_tex: yes
+  word_document: default
+  pdf_document:
+    toc: no
+  html_document: default
+bibliography: references.bib
+csl: elife.csl
+---
+
+```{r setup, include=FALSE}
+
+processdata <- 3  # this flag determines the amount of processing, with 4 levels:
+# 0 - do no processing, generate the pdf using existing versions of all figures
+# 1 - generate figures using the processed group data (requires XMB of storage)
+# 2 - perform multivariate pattern analysis on individual participants (requires 25GB of storage, and takes X hours)
+# 3 - download all raw data and do preprocessing (requires ~60GB of storage)
+
+niterations <- 100  # number of iterations for MVPA
+
+# check which packages are installed, install the missing ones, and activate
+packagelist <- c('knitr','e1071','signal','osfr') # list of CRAN packages
+missingpackages <- packagelist[!packagelist %in% installed.packages()[,1]]
+if (length(missingpackages)>0){install.packages(missingpackages)}
+toinstall <- packagelist[which(!packagelist %in% (.packages()))]
+invisible(lapply(toinstall,library,character.only=TRUE))
+
+rawdir <- 'local/raw/'
+rawdir <- '/Volumes/USB128/UncannyValley/'
+processeddir <- 'local/processed/'
+processeddir <- '/Volumes/USB128/UncannyValley/'
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Abstract
+
+# Introduction
+
+# Materials & Methods
+
+## Participants
+
+## Apparatus & stimuli
+
+## Procedure
+
+
+### Experiment 1: robots
+
+
+### Experiment 2: hyper-realistic masks
+
+
+
+## Data analysis
+
+## Data and code availability
+
+Raw data, processed data, and all analysis scripts are available through the project repository at: https://.
+
+# Results
+
+## Experiment 1
+
+```{r include=FALSE, results='hide'}
+
+# (download and) analyse individual participant data for experiment 1
+
+if (processdata > 2){
+
+  legaltriggers <- 101:103
+  sublist <- dir(paste0(rawdir,'Robots'),full.names=FALSE)
+  subdirs <- dir(paste0(rawdir,'Robots'),full.names=TRUE)
+  
+  for (s in 1:length(sublist)){
+
+   if (!file.exists(paste0(processeddir,'RobotsP/R',s,'_processed.RData'))){
+    datafiles <- dir(subdirs[s],pattern='*.csv.gz',full.names=TRUE)
+    
+    trialcounter <- legaltriggers*0
+    alltrials <- array(0,dim=c(3,180,64,1200))
+    for (block in 1:length(datafiles)){
+      
+      EEGdata <- read.csv(datafiles[block])
+      electrodes <- colnames(EEGdata)[3:68]
+      
+      # bandpass filter data
+      filt <- butter(10,1/16.666,type='low')
+      for (ch in 1:66){
+        temp <- EEGdata[,ch+2]
+        ftemp <- signal::filter(filt,temp)
+        EEGdata[,ch+2] <- ftemp
+      }
+
+    triggertimes <- NULL
+    counter <- 0
+    lasttrigger <- -10000
+    for (n in 1:nrow(EEGdata)){
+      if (EEGdata$Trigger[n] %in% legaltriggers){
+        if (n>(lasttrigger+100)){
+        counter <- counter + 1
+        triggertimes[counter] <- n
+        lasttrigger <- n
+      }}
+    }
+    
+    for (trial in 1:counter){
+      thiscond <- which(legaltriggers==EEGdata$Trigger[triggertimes[trial]])
+      trialcounter[thiscond] <- trialcounter[thiscond] + 1
+
+      for (ch in 1:64){
+       temp <- EEGdata[triggertimes[trial]+(-200:999),ch+2]
+       temp <- temp - mean(temp[1:200])
+       alltrials[thiscond,trialcounter[thiscond],ch,] <- temp
+      }
+    }
+    
+    }
+    
+    save(file=paste0(processeddir,'RobotsP/R',s,'_processed.RData'),list=c('trialcounter','alltrials'))
+   }
+  }
+  
+}
+
+```
+
+```{r include=FALSE, results='hide'}
+
+# do MVPA for experiment 1
+
+if (processdata > 1){
+
+}
+
+```
+
+
+```{r include=FALSE, results='hide'}
+
+# create figures for experiment 1
+
+if (processdata > 0){
+
+}
+
+```
+
+
+## Experiment 2
+
+```{r include=FALSE, results='hide'}
+
+# (download and) analyse individual participant data for experiment 2
+
+if (processdata > 2){
+
+  # 100: asian, 200: western
+  # 11: halloween, 12: silicone, 23: real
+  legaltriggers <- c(111,112,123,211,212,223)
+  sublist <- dir(paste0(rawdir,'Masks'),full.names=FALSE)
+  subdirs <- dir(paste0(rawdir,'Masks'),full.names=TRUE)
+  
+  for (s in 1:length(sublist)){
+
+    if (!file.exists(paste0(processeddir,'MasksP/M',s,'_processed.RData'))){
+    datafiles <- dir(subdirs[s],pattern='*.csv.gz',full.names=TRUE)
+    
+    trialcounter <- matrix(0,nrow=3,ncol=6)
+    alltrials <- array(0,dim=c(3,6,76,64,1200))
+    for (block in 1:3){
+
+      EEGdata <- read.csv(datafiles[block])
+      electrodes <- colnames(EEGdata)[3:68]
+      
+      # bandpass filter data
+      filt <- butter(10,1/16.666,type='low')
+      for (ch in 1:66){
+        temp <- EEGdata[,ch+2]
+        ftemp <- signal::filter(filt,temp)
+        EEGdata[,ch+2] <- ftemp
+      }
+
+    triggertimes <- NULL
+    counter <- 0
+    lasttrigger <- -10000
+    for (n in 1:nrow(EEGdata)){
+      if (EEGdata$Trigger[n] %in% legaltriggers){
+        if (n>(lasttrigger+100)){
+        counter <- counter + 1
+        triggertimes[counter] <- n
+        lasttrigger <- n
+      }}
+    }
+
+    for (trial in 1:counter){
+      thiscond <- which(legaltriggers==EEGdata$Trigger[triggertimes[trial]])
+      trialcounter[block,thiscond] <- trialcounter[block,thiscond] + 1
+
+      for (ch in 1:64){
+       temp <- EEGdata[triggertimes[trial]+(-200:999),ch+2]
+       temp <- temp - mean(temp[1:200])
+       alltrials[block,thiscond,trialcounter[block,thiscond],ch,] <- temp
+      }
+    }
+    
+    }
+    
+    save(file=paste0(processeddir,'MasksP/M',s,'_processed.RData'),list=c('trialcounter','alltrials'))
+  }
+  }
+}
+
+
+```
+
+```{r include=FALSE, results='hide'}
+
+# do MVPA for experiment 2
+
+if (processdata > 1){
+
+}
+
+```
+
+```{r include=FALSE, results='hide'}
+
+# create figures for experiment 2
+
+if (processdata > 0){
+
+}
+
+```
+
+```{r pupildata, fig.cap="Caption.", fig.align="center", echo=FALSE}
+
+# knitr::include_graphics(paste0('Figures/pupildata.pdf'))
+
+```
+# Discussion
+
+
+
+# Conclusions
+
+# Acknowledgements
+
+# References
+
+
+
+
