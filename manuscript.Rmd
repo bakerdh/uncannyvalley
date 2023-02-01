@@ -1,6 +1,11 @@
 ---
-title: "Uncanny Valley"
-author: "Daniel Baker"
+title: |
+  | Neural correlates of the uncanny valley effect
+  | for robots and hyper-realistic masks 
+  | (for submission to Computers in Human Behavior)
+author: |
+  | Shona Fitzpatrick, Ailish K. Byrne, Alex Headley, Jet G. Sanders,
+  | Helen Petrie, Rob Jenkins & Daniel H. Baker
 date: "`r Sys.Date()`"
 output:
   bookdown::pdf_document2:
@@ -17,16 +22,23 @@ csl: elife.csl
 
 ```{r setup, include=FALSE}
 
-processdata <- 3  # this flag determines the amount of processing, with 4 levels:
+processdata <- 2  # this flag determines the amount of processing, with 4 levels:
 # 0 - do no processing, generate the pdf using existing versions of all figures
 # 1 - generate figures using the processed group data (requires XMB of storage)
+
+
 # 2 - perform multivariate pattern analysis on individual participants (requires 25GB of storage, and takes X hours)
 # 3 - download all raw data and do preprocessing (requires ~60GB of storage)
+niterations <- 50   # number of iterations for MVPA
+nsplits <- 5        # number of partitions of EEG trials
+dowhitening <- 1    # optionally pre-whiten the data for MVPA
 
-niterations <- 100  # number of iterations for MVPA
+
+nbootstraps <- 1000
+targetelectrodes <- c(28,54,58,64)
 
 # check which packages are installed, install the missing ones, and activate
-packagelist <- c('knitr','e1071','signal','osfr') # list of CRAN packages
+packagelist <- c('knitr','e1071','signal','osfr','tictoc','BayesFactor','reshape2','powerplus','R.matlab') # list of CRAN packages
 missingpackages <- packagelist[!packagelist %in% installed.packages()[,1]]
 if (length(missingpackages)>0){install.packages(missingpackages)}
 toinstall <- packagelist[which(!packagelist %in% (.packages()))]
@@ -34,37 +46,138 @@ invisible(lapply(toinstall,library,character.only=TRUE))
 
 rawdir <- 'local/raw/'
 rawdir <- '/Volumes/USB128/UncannyValley/'
-processeddir <- 'local/processed/'
-processeddir <- '/Volumes/USB128/UncannyValley/'
+processeddir <- 'local/RobotsProcessed/'
+# processeddir <- '/Volumes/USB128/UncannyValley/'
+
+if (!dir.exists('local/')){dir.create('local/')}
+if (!dir.exists('local/robotsmvpa/')){dir.create('local/robotsmvpa/')}
+if (!dir.exists('local/masksmvpa/')){dir.create('local/masksmvpa/')}
+
+
+collist <- c('red','green','blue')
+colfunc <- colorRampPalette(c("darkgreen", "darkblue"))
+colvect <- colfunc(29)
+addalpha <- function(col, alpha=1){apply(sapply(col, col2rgb)/255, 2, function(x) rgb(x[1], x[2], x[3], alpha=alpha))}
+
+getstartstop <- function(linestartstop){
+  xpairs <- matrix(0, nrow = 1200, ncol = 2)
+  paircounter <- 1
+  startval <- linestartstop[1]
+  lastval <- linestartstop[1]
+  for (n in 2:length(linestartstop)){
+    if ((linestartstop[n] - lastval) > 1){
+      xpairs[paircounter, ] <- c(startval, lastval)
+      startval <- linestartstop[n]
+      paircounter <- paircounter + 1
+    }
+    lastval <- linestartstop[n]
+  }
+  xpairs[paircounter,] <- c(startval,lastval)
+  xpairs <- xpairs[1:(paircounter+1),1:2]
+  return(xpairs)}
+
+# two functions used in prewhitening prior to MVPA
+# data must be in the format sensor x time x trials
+cov1para <- function(x){
+  
+  s <- dim(x)
+  ti <- s[1]
+  n <- s[2]
+  meanx <- colMeans(x)
+  x <- x - matrix(rep(meanx,ti),nrow=ti,ncol=n,byrow=TRUE)
+  
+  sample <- (1/ti)*(t(x)%*%x)
+  
+  meanvar <- sum(diag(sample))/n
+  prior <- meanvar * diag(n)
+  
+  y <- x^2
+  phiMat <- t(y) %*% y/ti - sample^2
+  phi <- sum(phiMat)
+  
+  gamma <- sample - prior
+  gamma <- sum(gamma^2)
+  
+  kappa <- phi/gamma
+  shrinkage <- max(0,min(1,kappa/ti))
+  
+  sigma <- shrinkage * prior + (1-shrinkage) * sample
+  
+  return(sigma)}
+
+whitenmatrix <- function(data,condid){
+  
+  # set up variables
+  s <- dim(data)
+  nvar <- s[1]
+  ntimes <- s[2]
+  ncond <- max(condid)
+  Cov <- matrix(0,nrow=nvar,ncol=nvar)
+  
+  # compute whitening matrix
+  for (cond in 1:ncond){
+    dat <- data[,,which(condid==cond)]
+    for (time in 1:ntimes){
+      sigma <- cov1para(t(dat[,time,]))
+      Cov <- Cov + sigma
+    }
+  }
+  Cov <- Cov/(ncond*ntimes)
+  W <- powerplus::Matpow(Cov,-0.5)
+return(W)}
+
 
 knitr::opts_chunk$set(echo = TRUE)
+
 ```
 
 # Abstract
 
 # Introduction
 
+Many people report an aversion to entities that are human-like, but on closer inspection are actually artificial. Examples include humanoid robots (androids), puppets, realistic computer-generated images, and hyper-realistic masks. The term 'uncanny valley' [@Mori1970; English translation in @Mori2012] describes the idea that entities that are clearly human or clearly artificial do not evoke unease, whereas artificial entities that are human-like are disconcerting. Understanding these experiences is increasingly important as artificial entities become more integrated into our everyday lives, however at present relatively little is known about the neural underpinnings of the uncanny valley effect.
+
+Neural responses to faces and bodies in general are well-characterised, and there appear to be specialised brain regions devoted to both [reviewed in @Hu2020]. For example, areas of the occipital lobe [@Gauthier2000] and fusiform gyrus [@Kanwisher1997] respond more to faces than non-face stimuli, and sections of extrastriate cortex are responsive to bodies [@Downing2001]. There are also event-related potential (ERP) signals associated with face and body stimuli, though their precise purpose is still debated [@Thierry2007]. It seems highly likely that 'uncanny' images will activate these same processes, yet it is unclear whether the sense of unease they produce occurs at bottom-up sensory stages, or is modulated by more top-down cognitive factors.
+
+One previous study has measured fMRI responses to moving stimuli designed to elicit an uncanny valley effect. @Saygin2012 found repetition suppression effects in action-specific brain regions responding to movies of androids that had a biological appearance, but mechanical motion. These effects were stronger than for movies of humans or mechanical robots performing the same actions. A more recent electroencephalography (EEG) study [@Urgen2018] identified a difference in the N400 component between dynamic and static conditions using the same stimuli. Although this difference was strongest over frontal electrodes, source reconstruction of the N400 itself suggested a left-lateralised source in temporo-parietal cortex, consistent with the fMRI results [@Saygin2012]. The authors interpret both of these findings as being due to the discrepancy between the human-like appearance and the clearly non-biological motion of the robot.
+
+Our aim here was to further investigate neural correlates of the uncanny valley effect. We achieve this through two EEG experiments, in which we measure neural responses to static images. In the first experiment, the stimuli were humans, machine-like robots, and human-like robots. In the second experiment we aimed to generalise the finding by using images of people wearing no masks, wearing obvious masks (e.g. carnival or halloween masks), and wearing hyper-realistic silicone masks [@Sanders2017]. Rather than focus on specific ERP components, we use a non-parametric cluster correction procedure to compare conditions. We also apply a pattern classification approach to identify time windows in which information in the EEG signal can be used to distinguish between pairs of conditions.
+
 # Materials & Methods
 
 ## Participants
 
+A total of 29 participants completed Experiment 1 (12 male, 17 female), and 30 participants completed Experiment 2 (7 male, 23 female). None of the participants had previously taken part in a study using these stimuli, and all were naïve to the hypotheses and wore their normal optical correction if required. Written informed consent was collected before each experiment began, and all procedures were approved by the Ethics committee of the Department of Psychology at the University of York.
+
 ## Apparatus & stimuli
+
+In Experiment 1, the stimulus set consisted of a total of 90 images, evenly split between three categories: real faces, human-like robots, and mechanical robots. Images all showed the head and shoulders of the subject, had white backgrounds, and were sourced from the internet. In Experiment 2, the stimulus set consisted of a total of 296 images, comprising real faces (148 images), people wearing silicone masks (74 images), and people wearing Halloween masks (74 images). The backgrounds of these images were more heterogeneous, and showed the natural surroundings of the subject. In both experiments, images involved examples of both genders, and of varied ethnic backgrounds.
+
+All stimuli were displayed on a ViewPixx display running at 120Hz, controlled by an Apple Macintosh computer. The display was gamma corrected using a photometer to ensure that the luminance output was linear. EEG data were collected using a 64-channel Waveguard cap and an ANT Neuroscan system, sampling at 1kHz. Low latency digital triggers were sent between the display and the EEG amplifier using an 8-bit parallel cable.
 
 ## Procedure
 
-
 ### Experiment 1: robots
 
+Each participant completed three blocks of the first experiment. Within each block, all 90 stimulus images were presented twice in a random order. Stimuli subtended $11\times11$ degrees at the viewing distance of 57cm, and were shown against a mid-grey background, with a black central fixation cross displayed throughout. The presentation duration was 500ms, and participants were asked to press a mouse button to indicate if they believed each image was of a human or of a robot. After each response there was a random duration blank period with a mean duration of 1000ms and a standard deviation of 200ms. Each block lasted around 6 minutes.
 
 ### Experiment 2: hyper-realistic masks
 
-
+Participants were shown all 296 images in a random order in each of three blocks. In the first block, stimuli subtended $5.5\times7.5$ degrees of visual angle when viewed at a distance of 57cm. In the second block, stimuli doubled in size (width and height), and subtended $11\times15$ degrees at the same viewing distance. In the third block, stimuli doubled in size again, and subtended $22\times30$ degrees. Stimuli were presented for 250ms, and participants indicated whether they thought each image contained a real face or a mask, using a two-button trackball. The button assignment (whether the left button indicated a face or a mask, and vice versa) was determined randomly for each participant, but remained constant throughout the whole experiment. Text reminding the participant of the button assignment was present continuously in the lower right corner of the screen, far from the area of the screen where the stimuli were presented. A central fixation cross was also present throughout. After each response there was a random duration blank period with a mean duration of 1000ms and a standard deviation of 200ms. Each block lasted around 8 minutes.
 
 ## Data analysis
 
+EEG signals were recorded during each block, and saved to disc for subsequent offline analysis. We used a component of the EEGlab toolbox [@Delorme2004] to convert the continuous data from a proprietary file format to a compressed csv text file. All subsequent analyses were conducted in R using these files.
+
+For each block, data at each electrode were low-pass filtered at 30Hz with a $10^{th}$ order Butterworth filter, and then epoched using the stimulus onset triggers. A pre-stimulus baseline (average voltage of the 200ms before stimulus onset) was subtracted from each waveform. We rejected ERPs that showed evidence of excessive noise or movement artefacts on a per-electrode basis by excluding trials where the standard deviation across the time window from 200ms before to 1000ms after stimulus onset exceeded $40\mu V$. ERPs were averaged across trials for each participant, and then across participants to calculate group averages.
+
+We performed univariate analyses by conducting Bayesian t-tests [@Rouder2009] between ERPs from pairs of conditions at each time point using a JZS prior. The resulting Bayes factor score is a summary of the evidence in favour of either the null hypothesis (that the waveforms are equal) or the alternative hypothesis (that they differ). We use the heuristics proposed by @Jeffreys1961 that Bayes factors >3 constitute some evidence supporting the alternative hypothesis, factors >10 constitute strong evidence, and factors >30 constitute very strong evidence.
+
+Multivariate pattern analysis was conducted by training a linear support vector machine algorithm to discriminate between patterns of activity across electrodes at a specific time point. The patterns came from the real face condition and one of the mask conditions at a single stimulus size, and for a single participant. Examples of each pattern were calculated by averaging over random subsets of 36 trials from a given condition, and using these to train the classifier. The accuracy of the classifier was tested on the averaged remaining trials (that were not used in training) for each condition. This process was repeated 1000 times with different trial permutations to obtain an average accuracy, where chance performance is at 50\% correct. The analysis was carried out at all time points, and also for all participants. We then averaged classifier accuracy across participants, and calculated one sample Bayesian t-tests at each time point as described above.
+
 ## Data and code availability
 
-Raw data, processed data, and all analysis scripts are available through the project repository at: https://.
+Raw data, processed data, and analysis scripts are freely available through the project repository at: https://osf.io/5nz2h/
 
 # Results
 
@@ -77,16 +190,20 @@ Raw data, processed data, and all analysis scripts are available through the pro
 if (processdata > 2){
 
   legaltriggers <- 101:103
+  responsetriggers <- c(10,20)
   sublist <- dir(paste0(rawdir,'Robots'),full.names=FALSE)
   subdirs <- dir(paste0(rawdir,'Robots'),full.names=TRUE)
   
   for (s in 1:length(sublist)){
 
-   if (!file.exists(paste0(processeddir,'RobotsP/R',s,'_processed.RData'))){
+   if (!file.exists(paste0(processeddir,'RobotsP/',sublist[s],'_processed.RData'))){
     datafiles <- dir(subdirs[s],pattern='*.csv.gz',full.names=TRUE)
     
     trialcounter <- legaltriggers*0
     alltrials <- array(0,dim=c(3,180,64,1200))
+    allresps <- array(0,dim=c(3,180))
+    allresptimes <- allresps
+    
     for (block in 1:length(datafiles)){
       
       EEGdata <- read.csv(datafiles[block])
@@ -100,7 +217,19 @@ if (processdata > 2){
         EEGdata[,ch+2] <- ftemp
       }
 
-    triggertimes <- NULL
+    responsetimes <- NULL
+    counter <- 0
+    lasttrigger <- -10000
+    for (n in 1:nrow(EEGdata)){
+      if (EEGdata$Trigger[n] %in% responsetriggers){
+        if (n>(lasttrigger+100)){
+        counter <- counter + 1
+        responsetimes[counter] <- n
+        lasttrigger <- n
+      }}
+    }
+    
+        triggertimes <- NULL
     counter <- 0
     lasttrigger <- -10000
     for (n in 1:nrow(EEGdata)){
@@ -121,11 +250,14 @@ if (processdata > 2){
        temp <- temp - mean(temp[1:200])
        alltrials[thiscond,trialcounter[thiscond],ch,] <- temp
       }
+      
+      allresps[thiscond,trialcounter[thiscond]] <- EEGdata$Trigger[responsetimes[trial]]/10
+      allresptimes[thiscond,trialcounter[thiscond]] <- responsetimes[trial] - triggertimes[trial]
     }
     
     }
     
-    save(file=paste0(processeddir,'RobotsP/R',s,'_processed.RData'),list=c('trialcounter','alltrials'))
+    save(file=paste0(processeddir,'RobotsP/',sublist[s],'_processed.RData'),list=c('trialcounter','alltrials','allresps','allresptimes'))
    }
   }
   
@@ -135,25 +267,556 @@ if (processdata > 2){
 
 ```{r include=FALSE, results='hide'}
 
-# do MVPA for experiment 1
+# do MVPA and subject averaging for experiment 1
 
 if (processdata > 1){
+datafiles <- dir(paste0(processeddir,'RobotsP'),pattern='*.RData',full.names=TRUE)
+totaliterations <- niterations
+
+for (s in 1:1){   #length(datafiles)){
+  tic()
+  print(s)
+  load(datafiles[s])
+  
+  subjmvpa <- array(0,dim=c(3,1200))
+  subjmeans <- array(0,dim=c(3,64,1200))
+
+  sdtime <- apply(alltrials,1:3,sd)
+  cutoff <- quantile(sdtime,0.95)
+  includetrials <- sdtime*0
+  includetrials[which(sdtime<cutoff)] <- 1
+  for (cond in 1:3){
+    temp <- alltrials[cond,,,]
+    for (ch in 1:64){
+      if (sum(includetrials[cond,,ch])>1){
+    subjmeans[cond,ch,] <- apply(temp[which(includetrials[cond,,ch]>0),ch,],2,mean)
+    }}
+  }
+  
+  normdata <- alltrials*0
+  for (ch in 1:64){
+    for (t in 1:1200){
+      meanV <- (mean(alltrials[1,1:trialcounter[1],ch,t]) + mean(alltrials[2,1:trialcounter[2],ch,t]) + mean(alltrials[3,1:trialcounter[3],ch,t]))/3
+      for (cond in 1:3){
+      normdata[cond,1:trialcounter[cond],ch,t] <- alltrials[cond,1:trialcounter[cond],ch,t] - meanV
+      }
+    }
+  }
+  
+  comparisons <- matrix(c(1,2,1,3,2,3),nrow=3,ncol=2,byrow=TRUE)
+  for (comp in 1:nrow(comparisons)){
+    allaccuracy <- matrix(0,nrow=niterations,ncol=1200)
+  for (n in 1:totaliterations){
+    
+    # random shuffling of the trial order
+    mintrials <- min(trialcounter[comparisons[comp,1:2]])
+    tempA <- normdata[comparisons[comp,1],sample(1:trialcounter[comparisons[comp,1]],mintrials),,]
+    tempB <- normdata[comparisons[comp,2],sample(1:trialcounter[comparisons[comp,2]],mintrials),,]
+    
+    # create averaged subsets of trials
+    condA <- array(0,dim=c(64,1200,nsplits))
+    condB <- array(0,dim=c(64,1200,nsplits))
+    ntrialspermeanA <- floor(dim(tempA)[1]/nsplits)
+    ntrialspermeanB <- floor(dim(tempB)[1]/nsplits)
+    for (i in 1:nsplits){
+      condA[,,i] <- apply(tempA[(1+((i-1)*ntrialspermeanA)):(i*ntrialspermeanA),,],2:3,mean)
+      condB[,,i] <- apply(tempB[(1+((i-1)*ntrialspermeanB)):(i*ntrialspermeanB),,],2:3,mean)
+    }
+    
+    if (dowhitening > 0){
+      towhiten <- array(0,dim=c(64,1200,8))
+      towhiten[,,1:4] <- condA[,,1:(nsplits-1)]
+      towhiten[,,5:8] <- condB[,,1:(nsplits-1)]
+      traininglabels <- rep(1:2,each=nsplits-1)
+      W <- whitenmatrix(towhiten,traininglabels)
+      d <- dim(condA)
+      temp <- W %*% matrix(as.vector(condA),nrow=d[1],ncol=d[2]*d[3])
+      condA <- array(as.vector(temp),d)
+      d <- dim(condB)
+      temp <- W %*% matrix(as.vector(condB),nrow=d[1],ncol=d[2]*d[3])
+      condB <- array(as.vector(temp),d)
+    }
+    
+    for (t in 1:1200){
+      trainingdata <- t(cbind(condA[,t,1:(nsplits-1)],condB[,t,1:(nsplits-1)]))
+      traininglabels <- gl(2,nsplits-1)
+      testingdata <- t(cbind(condA[,t,nsplits],condB[,t,nsplits]))
+      testinglabels <- gl(2,1)
+      model <- e1071::svm(trainingdata,traininglabels,scale=FALSE,kernel='linear')
+      pred <- predict(model,newdata = testingdata)
+      allaccuracy[n,t] <- sum(pred==testinglabels)/length(testinglabels)
+    }
+  }
+    
+    subjmvpa[comp,] <- colMeans(allaccuracy)
+  }
+  save(file=paste0('local/robotsmvpa/R',s,'_mvpa.RData'),list=c('subjmvpa','subjmeans','totaliterations','allresps','allresptimes','trialcounter'))
+
+toc()  
+}
+
 
 }
 
 ```
 
+```{r include=FALSE, results='hide'}
+
+# statistical analysis for experiment 1
+
+if (processdata > 0){
+  
+  if (!file.exists('local/GroupDataRobots.RData')){
+
+datafiles <- dir(processeddir,pattern='*decoding.mat',full.names=TRUE)    
+allmvpa <- array(0,dim=c(length(datafiles),3,1201))  
+for (s in 1:length(datafiles)){
+  data <- readMat(datafiles[s])
+  allmvpa[s,,] <- data$Value/100
+}    
+times <- data$Time
+
+datafiles1 <- dir(processeddir,pattern='*_101.mat',full.names=TRUE)    
+datafiles2 <- dir(processeddir,pattern='*_102.mat',full.names=TRUE)    
+datafiles3 <- dir(processeddir,pattern='*_103.mat',full.names=TRUE)    
+allmeans <- array(0,dim=c(length(datafiles1),3,66,1201))
+for (s in 1:length(datafiles1)){
+  data <- readMat(datafiles1[s])
+  allmeans[s,1,,] <- data$F*10^6
+  data <- readMat(datafiles2[s])
+  allmeans[s,2,,] <- data$F*10^6
+  data <- readMat(datafiles3[s])
+  allmeans[s,3,,] <- data$F*10^6
+}     
+
+
+# datafiles <- dir(paste0('local/robotsmvpa'),pattern='*.RData',full.names=TRUE)
+# allmvpa <- array(0,dim=c(length(datafiles),3,1200))
+# allmeans <- array(0,dim=c(length(datafiles),3,64,1200))
+# allRT <- matrix(0,nrow=length(datafiles),ncol=3)
+# prophuman <- matrix(0,nrow=length(datafiles),ncol=3)
+# alldprime <- matrix(0,nrow=length(datafiles),ncol=3)
+# for (s in 1:length(datafiles)){
+#   load(datafiles[s])
+#   allmvpa[s,,] <- subjmvpa
+#   allmeans[s,,,] <- subjmeans
+#   
+#   hits <- NULL
+#   misses <- NULL
+#   for (cond in 1:3){
+#   allRT[s,cond] <- mean(20*log10(allresptimes[cond,which(allresptimes[cond,]>0)]))
+#   prophuman[s,cond] <- sum(allresps[cond,1:trialcounter[cond]]-1)/trialcounter[cond]
+#   
+#   if (cond<3){
+#   hits[cond] <- trialcounter[cond]-sum(allresps[cond,1:trialcounter[cond]]-1)
+#   misses[cond] <- sum(allresps[cond,1:trialcounter[cond]]-1)
+#   }
+#   if (cond==3){
+#   hits[cond] <- sum(allresps[cond,1:trialcounter[cond]]-1)
+#   misses[cond] <- trialcounter[cond]-sum(allresps[cond,1:trialcounter[cond]]-1)
+#   }
+#   }
+#   
+#   hitrate <- hits/(hits + misses) 
+#   for (cond in 1:3){
+#     if (cond<3){falsealarms <- misses[3]/ (misses[3] + hits[3])}
+#     if (cond==3){falsealarms <- sum(misses[1:2]) / (sum(misses[1:2]) + sum(hits[1:2]))}
+#   alldprime[s,cond] <- qnorm(hitrate[cond]) - qnorm(falsealarms)
+#   }
+# }
+# 
+# alldprime[which(is.infinite(alldprime))] <- 5
+# 
+# dataforANOVA <- melt(alldprime)
+# colnames(dataforANOVA) <- c('Participant','Condition','dprime')
+# dataforANOVA$Participant <- as.factor(dataforANOVA$Participant)
+# dataforANOVA$Condition <- as.factor(dataforANOVA$Condition)
+# bfdprime <- extractBF(anovaBF(dprime ~ Condition,dataforANOVA,whichRandom='Participant'))$bf
+# 
+# dataforANOVA <- melt(allRT)
+# colnames(dataforANOVA) <- c('Participant','Condition','RT')
+# dataforANOVA$Participant <- as.factor(dataforANOVA$Participant)
+# dataforANOVA$Condition <- as.factor(dataforANOVA$Condition)
+# bfRT <- extractBF(anovaBF(RT ~ Condition,dataforANOVA,whichRandom='Participant'))$bf
+
+subjmeanERP <- apply(allmeans,c(1,3,4),mean)
+meanERP <- apply(allmeans,2:4,mean)
+meanMVPA <- apply(allmvpa,2:3,mean)
+grandmeanERP <- apply(subjmeanERP[,targetelectrodes,],3,mean)
+subjERPs <- apply(subjmeanERP[,targetelectrodes,],c(1,3),mean)
+condERPs <- apply(allmeans[,,targetelectrodes,],c(1,2,4),mean)
+
+mlimits <- matrix(0,nrow=6,ncol=1201)
+mBF <- matrix(0,nrow=3,ncol=1201)
+bspop <- 1:nbootstraps
+for (n in 1:1201){
+
+  for (cond in 1:3){
+  for (b in 1:nbootstraps){
+    bspop[b] <- mean(sample(allmvpa[,cond,n],replace=TRUE))
+  }
+mlimits[(1:2)+((cond-1)*2),n] <- quantile(bspop,probs=c(0.025,0.975)) 
+mBF[cond,n] <- extractBF(ttestBF(allmvpa[,cond,n],mu=0.5))$bf
+  }
+}
+
+comparisons <- matrix(c(1,2,1,3,2,3),nrow=3,ncol=2,byrow=TRUE)
+limits <- matrix(0,nrow=8,ncol=1201)
+ERP_BF <- matrix(0,nrow=3,ncol=1201)
+bspop <- 1:nbootstraps
+for (n in 1:1201){
+
+  for (b in 1:nbootstraps){
+    bspop[b] <- mean(sample(subjERPs[,n],replace=TRUE))
+  }
+  limits[1:2,n] <- quantile(bspop,probs=c(0.025,0.975)) 
+  
+  for (cond in 1:3){
+  for (b in 1:nbootstraps){
+    bspop[b] <- mean(sample(condERPs[,cond,n],replace=TRUE))
+  }
+  limits[(1:2)+(cond*2),n] <- quantile(bspop,probs=c(0.025,0.975)) 
+  ERP_BF[cond,n] <- extractBF(ttestBF(condERPs[,comparisons[cond,1],n],condERPs[,comparisons[cond,2],n],paired=TRUE))$bf
+  }
+}
+
+
+save(file='local/GroupDataRobots.RData',list=c('allmeans','allmvpa','mlimits','subjmeanERP','limits','grandmeanERP','subjERPs','condERPs','meanMVPA','meanERP','mBF','ERP_BF'))
+}
+
+}
+
+```
 
 ```{r include=FALSE, results='hide'}
 
 # create figures for experiment 1
 
+if (file.exists('local/GroupDataRobots.RData')){load('local/GroupDataRobots.RData')}  
 if (processdata > 0){
+
+pdf(paste0('Figures/RobotsData.pdf'), bg="transparent", height = 12, width = 12)
+
+par(mfrow=c(2,2))
+
+  plotlims <- c(0,5,0.5,3.5)  
+  ticklocsy <- c(0.5,1,2,3,3.5)    
+  ticklocsx <- 0:5    # locations of tick marks on y axis
+  ticklabelsy <- c("","Robot","Android","Human","")       
+  ticklabelsx <- ticklocsx    # set labels for y ticks
+  
+  plot(x=NULL,y=NULL,axes=FALSE, ann=FALSE, xlim=plotlims[1:2], ylim=plotlims[3:4])  
+  axis(1, at=ticklocsx, tck=0.01, lab=F, lwd=2)     
+  axis(2, at=ticklocsy, tck=0.01, lab=F, lwd=2)
+  mtext(text = ticklabelsx, side = 1, at=ticklocsx)     
+  mtext(text = ticklabelsy, side = 2, at=ticklocsy, line=0.2, las=3) 
+  title(xlab="d prime", col.lab=rgb(0,0,0), line=1.5, cex.lab=1.5)
+
+  # a <- density(alldprime[,1],cut=6)
+  # a$y <- 0.35*a$y/max(a$y)
+  # polygon(a$x,1.1+a$y,border=NA,col=collist[1])
+  # 
+  #   a <- density(alldprime[,2])
+  # a$y <- 0.35*a$y/max(a$y)
+  # polygon(a$x,2.1+a$y,border=NA,col=collist[2])
+  # 
+  #   a <- density(alldprime[,3])
+  # a$y <- 0.35*a$y/max(a$y)
+  # polygon(a$x,3.1+a$y,border=NA,col=collist[3])
+  # 
+  # xvals <- seq(-0.1,0.1,length=nrow(alldprime))
+  # points(alldprime[,1],1+xvals-0.2,pch=16)
+  # points(alldprime[,2],2+xvals-0.2,pch=15)
+  # points(alldprime[,3],3+xvals-0.2,pch=18)
+  # 
+  # for (cond in 1:3){
+  # bs <- NULL
+  # for (n in 1:nbootstraps){bs[n] <- mean(sample(alldprime[,cond],replace=TRUE))}
+  # ci <- quantile(bs,c(0.025,0.975))
+  # arrows(mean(alldprime[,cond]),cond,ci[1],cond,angle=90,length=0.1,lwd=3)
+  # arrows(mean(alldprime[,cond]),cond,ci[2],cond,angle=90,length=0.1,lwd=3)
+  # }
+  # 
+  # points(mean(alldprime[,1]),1,pch=21,cex=2,lwd=2,bg=collist[1])
+  # points(mean(alldprime[,2]),2,pch=22,cex=2,lwd=2,bg=collist[2])
+  # points(mean(alldprime[,3]),3,pch=23,cex=2,lwd=2,bg=collist[3])
+  # 
+
+  
+  plotlims <- c(52,64,0.5,3.5)  
+  ticklocsy <- c(0.5,1,2,3,3.5)    
+  ticklocsx <- c(52,58,64)    
+  ticklabelsy <- c("","Robot","Android","Human","")       
+  ticklabelsx <- c(400,800,1600)    # set labels for y ticks
+  
+  plot(x=NULL,y=NULL,axes=FALSE, ann=FALSE, xlim=plotlims[1:2], ylim=plotlims[3:4])  
+  axis(1, at=ticklocsx, tck=0.01, lab=F, lwd=2)     
+  axis(2, at=ticklocsy, tck=0.01, lab=F, lwd=2)
+  mtext(text = ticklabelsx, side = 1, at=ticklocsx)     
+  mtext(text = ticklabelsy, side = 2, at=ticklocsy, line=0.2, las=3) 
+  title(xlab="Reaction time (ms)", col.lab=rgb(0,0,0), line=1.5, cex.lab=1.5)
+
+  # a <- density(allRT[,1],cut=6)
+  # a$y <- 0.35*a$y/max(a$y)
+  # polygon(a$x,1.1+a$y,border=NA,col=collist[1])
+  # 
+  #   a <- density(allRT[,2])
+  # a$y <- 0.35*a$y/max(a$y)
+  # polygon(a$x,2.1+a$y,border=NA,col=collist[2])
+  # 
+  #   a <- density(allRT[,3])
+  # a$y <- 0.35*a$y/max(a$y)
+  # polygon(a$x,3.1+a$y,border=NA,col=collist[3])
+  # 
+  # xvals <- seq(-0.1,0.1,length=nrow(allRT))
+  # points(allRT[,1],1+xvals-0.2,pch=16)
+  # points(allRT[,2],2+xvals-0.2,pch=15)
+  # points(allRT[,3],3+xvals-0.2,pch=18)
+  # 
+  # for (cond in 1:3){
+  # bs <- NULL
+  # for (n in 1:nbootstraps){bs[n] <- mean(sample(allRT[,cond],replace=TRUE))}
+  # ci <- quantile(bs,c(0.025,0.975))
+  # arrows(mean(allRT[,cond]),cond,ci[1],cond,angle=90,length=0.1,lwd=3)
+  # arrows(mean(allRT[,cond]),cond,ci[2],cond,angle=90,length=0.1,lwd=3)
+  # }
+  # points(mean(allRT[,1]),1,pch=21,cex=2,lwd=2,bg=collist[1])
+  # points(mean(allRT[,2]),2,pch=22,cex=2,lwd=2,bg=collist[2])
+  # points(mean(allRT[,3]),3,pch=23,cex=2,lwd=2,bg=collist[3])
+
+
+plotlims <- c(-200,1000,0,1) 
+ticklocsx <- seq(-200,1000,200)  
+ticklocsy <- seq(0,1,0.25)    
+ticklabelsx <- ticklocsx      
+ticklabelsy <- ticklocsy*100   
+
+plot(x=NULL,y=NULL,axes=FALSE, ann=FALSE, xlim=plotlims[1:2], ylim=plotlims[3:4])   
+axis(1, at=ticklocsx, tck=0.01, lab=F, lwd=2)     
+axis(2, at=ticklocsy, tck=0.01, lab=F, lwd=2)
+
+mtext(text = ticklabelsx, side = 1, at=ticklocsx)  
+mtext(text = ticklabelsy, side = 2, at=ticklocsy, line=0.2, las=1) 
+title(xlab="Time (ms)", col.lab=rgb(0,0,0), line=1.2, cex.lab=1.5)  #}    
+title(ylab="Classifier accuracy (%)", col.lab=rgb(0,0,0), line=1.5, cex.lab=1.5)
+
+lines(c(-200, 1000),c(0.5, 0.5), col='black', lty=2)
+lines(c(0,0),c(0,1), col='black')
+
+
+polygon(c(-200:1000,1000:-200), c(mlimits[1,],mlimits[2,1201:1]), col=addalpha('black',0.3),border=NA)
+polygon(c(-200:1000,1000:-200), c(mlimits[3,],mlimits[4,1201:1]), col=addalpha('blue',0.3),border=NA)
+polygon(c(-200:1000,1000:-200), c(mlimits[5,],mlimits[6,1201:1]), col=addalpha('green',0.3),border=NA)
+
+
+lines(-200:1000,meanMVPA[1,], col='black', lwd=3, cex=0.5)     
+lines(-200:1000,meanMVPA[2,], col='blue', lwd=3, cex=0.5)     
+lines(-200:1000,meanMVPA[3,], col='green', lwd=3, cex=0.5)    
+
+
+
+
+
+plotlims <- c(-200,1000,-12,12)  
+ticklocsx <- seq(-200,1000,200)    # locations of tick marks on x axis
+ticklocsy <- seq(-12,12,4)    # locations of tick marks on y axis
+ticklabelsx <- ticklocsx        # set labels for x ticks
+ticklabelsy <- ticklocsy    # set labels for y ticks
+
+plot(x=NULL,y=NULL,axes=FALSE, ann=FALSE, xlim=plotlims[1:2], ylim=plotlims[3:4])  
+axis(1, at=ticklocsx, tck=0.01, lab=F, lwd=2)     # plot tick marks (no labels)
+axis(2, at=ticklocsy, tck=0.01, lab=F, lwd=2)
+mtext(text = ticklabelsx, side = 1, at=ticklocsx, line=0.2, cex=1.5)    
+mtext(text = ticklabelsy, side = 2, at=ticklocsy, line=0.2, las=1, cex=1.5)  
+title(xlab="Time (ms)", col.lab=rgb(0,0,0), line=1.5, cex.lab=1.8)   
+title(ylab="Amplitude (µV)", col.lab=rgb(0,0,0), line=2.2, cex.lab=1.8)
+
+lines(c(-200,1000),c(0,0),lty=1)
+lines(c(0,0),c(-20,20),lty=1)
+
+polygon(c(-200:1000,1000:-200), c(limits[3,],limits[4,1201:1]), col=addalpha(collist[1],0.3),border=NA)
+polygon(c(-200:1000,1000:-200), c(limits[5,],limits[6,1201:1]), col=addalpha(collist[2],0.3),border=NA)
+polygon(c(-200:1000,1000:-200), c(limits[7,],limits[8,1201:1]), col=addalpha(collist[3],0.3),border=NA)
+
+lines(-200:1000, colMeans(meanERP[1,targetelectrodes,]), lwd=3, col=collist[1])     
+lines(-200:1000, colMeans(meanERP[2,targetelectrodes,]), lwd=3, col=collist[2])     
+lines(-200:1000, colMeans(meanERP[3,targetelectrodes,]), lwd=3, col=collist[3])     
+
+dev.off()
+
+
+
+pdf(paste0('Figures/RobotsMVPA.pdf'), bg="transparent", height = 12, width = 12)
+
+par(mfrow=c(2,2))
+
+times <- -199:1200
+
+plotlims <- c(-200,1000,-12,12)  
+ticklocsx <- seq(-200,1000,200)    # locations of tick marks on x axis
+ticklocsy <- seq(-12,12,4)    # locations of tick marks on y axis
+ticklabelsx <- ticklocsx        # set labels for x ticks
+ticklabelsy <- ticklocsy    # set labels for y ticks
+
+plot(x=NULL,y=NULL,axes=FALSE, ann=FALSE, xlim=plotlims[1:2], ylim=plotlims[3:4])  
+axis(1, at=ticklocsx, tck=0.01, lab=F, lwd=2)     # plot tick marks (no labels)
+axis(2, at=ticklocsy, tck=0.01, lab=F, lwd=2)
+mtext(text = ticklabelsx, side = 1, at=ticklocsx, line=0.2, cex=1.5)    
+mtext(text = ticklabelsy, side = 2, at=ticklocsy, line=0.2, las=1, cex=1.5)  
+title(xlab="Time (ms)", col.lab=rgb(0,0,0), line=1.5, cex.lab=1.8)   
+title(ylab="Amplitude (µV)", col.lab=rgb(0,0,0), line=2.2, cex.lab=1.8)
+
+lines(c(-200,1000),c(0,0),lty=1)
+lines(c(0,0),c(-20,20),lty=1)
+
+polygon(c(-200:1000,1000:-200), c(limits[3,],limits[4,1201:1]), col=addalpha(collist[1],0.3),border=NA)
+polygon(c(-200:1000,1000:-200), c(limits[7,],limits[8,1201:1]), col=addalpha(collist[3],0.3),border=NA)
+
+lines(-200:1000, colMeans(meanERP[1,targetelectrodes,]), lwd=3, col=collist[1])     
+lines(-200:1000, colMeans(meanERP[3,targetelectrodes,]), lwd=3, col=collist[3])     
+
+
+plotlims <- c(-200,1000,-12,12)  
+ticklocsx <- seq(-200,1000,200)    # locations of tick marks on x axis
+ticklocsy <- seq(-12,12,4)    # locations of tick marks on y axis
+ticklabelsx <- ticklocsx        # set labels for x ticks
+ticklabelsy <- ticklocsy    # set labels for y ticks
+
+plot(x=NULL,y=NULL,axes=FALSE, ann=FALSE, xlim=plotlims[1:2], ylim=plotlims[3:4])  
+axis(1, at=ticklocsx, tck=0.01, lab=F, lwd=2)     # plot tick marks (no labels)
+axis(2, at=ticklocsy, tck=0.01, lab=F, lwd=2)
+mtext(text = ticklabelsx, side = 1, at=ticklocsx, line=0.2, cex=1.5)    
+mtext(text = ticklabelsy, side = 2, at=ticklocsy, line=0.2, las=1, cex=1.5)  
+title(xlab="Time (ms)", col.lab=rgb(0,0,0), line=1.5, cex.lab=1.8)   
+title(ylab="Amplitude (µV)", col.lab=rgb(0,0,0), line=2.2, cex.lab=1.8)
+
+lines(c(-200,1000),c(0,0),lty=1)
+lines(c(0,0),c(-20,20),lty=1)
+
+polygon(c(-200:1000,1000:-200), c(limits[5,],limits[6,1201:1]), col=addalpha(collist[2],0.3),border=NA)
+polygon(c(-200:1000,1000:-200), c(limits[7,],limits[8,1201:1]), col=addalpha(collist[3],0.3),border=NA)
+
+lines(-200:1000, colMeans(meanERP[2,targetelectrodes,]), lwd=3, col=collist[2])     
+lines(-200:1000, colMeans(meanERP[3,targetelectrodes,]), lwd=3, col=collist[3])     
+
+
+plotlims <- c(-200,1000,0,1) 
+ticklocsx <- seq(-200,1000,200)  
+ticklocsy <- seq(0,1,0.25)    
+ticklabelsx <- ticklocsx      
+ticklabelsy <- ticklocsy*100   
+
+plot(x=NULL,y=NULL,axes=FALSE, ann=FALSE, xlim=plotlims[1:2], ylim=plotlims[3:4])   
+axis(1, at=ticklocsx, tck=0.01, lab=F, lwd=2)     
+axis(2, at=ticklocsy, tck=0.01, lab=F, lwd=2)
+
+mtext(text = ticklabelsx, side = 1, at=ticklocsx)  
+mtext(text = ticklabelsy, side = 2, at=ticklocsy, line=0.2, las=1) 
+title(xlab="Time (ms)", col.lab=rgb(0,0,0), line=1.2, cex.lab=1.5)  #}    
+title(ylab="Classifier accuracy (%)", col.lab=rgb(0,0,0), line=1.5, cex.lab=1.5)
+
+lines(c(-200, 1000),c(0.5, 0.5), col='black', lty=2)
+lines(c(0,0),c(0,1), col='black')
+
+
+polygon(c(-200:1000,1000:-200), c(mlimits[3,],mlimits[4,1201:1]), col=addalpha('blue',0.3),border=NA)
+
+
+lines(-200:1000,meanMVPA[2,], col='blue', lwd=3, cex=0.5)     
+
+allbfs <- mBF[2,]
+lowsig <- 0.5 + (1:1201)*0
+midsig <- 0.5 + (1:1201)*0
+hisig <- 0.5 + (1:1201)*0
+for (t in 1:1201){
+ if (allbfs[t]>=3 & allbfs[t]<10){lowsig[t] <- allmeans[t]}
+ if (allbfs[t]>=10 & allbfs[t]<30){midsig[t] <- allmeans[t]}
+ if (allbfs[t]>=30){hisig[t] <- allmeans[t]}
+}
+
+linestartstop <- times[allbfs>=3 & allbfs<10]
+if (length(linestartstop)>1){xpairs <- getstartstop(linestartstop)
+for (n in 1:((length(xpairs)/2)-1)){polygon(xpairs[n,c(1,2,2,1)], c(0.34,0.34,0.36,0.36), col=rgb(1,1,0,alpha=1),border=NA)}}
+
+linestartstop <- times[allbfs>=10 & allbfs<30]
+if (length(linestartstop)>1){xpairs <- getstartstop(linestartstop)
+for (n in 1:((length(xpairs)/2)-1)){polygon(xpairs[n,c(1,2,2,1)], c(0.34,0.34,0.36,0.36), col=rgb(1,0.5,0,alpha=1),border=NA)}}
+
+linestartstop <- times[allbfs>=30]
+if (length(linestartstop)>1){xpairs <- getstartstop(linestartstop)
+for (n in 1:((length(xpairs)/2)-1)){polygon(xpairs[n,c(1,2,2,1)], c(0.34,0.34,0.36,0.36), col=rgb(1,0,0,alpha=1),border=NA)}}
+
+
+
+plotlims <- c(-200,1000,0,1) 
+ticklocsx <- seq(-200,1000,200)  
+ticklocsy <- seq(0,1,0.25)    
+ticklabelsx <- ticklocsx      
+ticklabelsy <- ticklocsy*100   
+
+plot(x=NULL,y=NULL,axes=FALSE, ann=FALSE, xlim=plotlims[1:2], ylim=plotlims[3:4])   
+axis(1, at=ticklocsx, tck=0.01, lab=F, lwd=2)     
+axis(2, at=ticklocsy, tck=0.01, lab=F, lwd=2)
+
+mtext(text = ticklabelsx, side = 1, at=ticklocsx)  
+mtext(text = ticklabelsy, side = 2, at=ticklocsy, line=0.2, las=1) 
+title(xlab="Time (ms)", col.lab=rgb(0,0,0), line=1.2, cex.lab=1.5)  #}    
+title(ylab="Classifier accuracy (%)", col.lab=rgb(0,0,0), line=1.5, cex.lab=1.5)
+
+lines(c(-200, 1000),c(0.5, 0.5), col='black', lty=2)
+lines(c(0,0),c(0,1), col='black')
+
+
+polygon(c(-200:1000,1000:-200), c(mlimits[5,],mlimits[6,1201:1]), col=addalpha('green',0.3),border=NA)
+
+
+lines(-200:1000,meanMVPA[3,], col='green', lwd=3, cex=0.5)    
+
+
+allbfs <- mBF[3,]
+lowsig <- 0.5 + (1:1201)*0
+midsig <- 0.5 + (1:1201)*0
+hisig <- 0.5 + (1:1201)*0
+for (t in 1:1201){
+ if (allbfs[t]>=3 & allbfs[t]<10){lowsig[t] <- allmeans[t]}
+ if (allbfs[t]>=10 & allbfs[t]<30){midsig[t] <- allmeans[t]}
+ if (allbfs[t]>=30){hisig[t] <- allmeans[t]}
+}
+
+linestartstop <- times[allbfs>=3 & allbfs<10]
+if (length(linestartstop)>1){xpairs <- getstartstop(linestartstop)
+for (n in 1:((length(xpairs)/2)-1)){polygon(xpairs[n,c(1,2,2,1)], c(0.34,0.34,0.36,0.36), col=rgb(1,1,0,alpha=1),border=NA)}}
+
+linestartstop <- times[allbfs>=10 & allbfs<30]
+if (length(linestartstop)>1){xpairs <- getstartstop(linestartstop)
+for (n in 1:((length(xpairs)/2)-1)){polygon(xpairs[n,c(1,2,2,1)], c(0.34,0.34,0.36,0.36), col=rgb(1,0.5,0,alpha=1),border=NA)}}
+
+linestartstop <- times[allbfs>=30]
+if (length(linestartstop)>1){xpairs <- getstartstop(linestartstop)
+for (n in 1:((length(xpairs)/2)-1)){polygon(xpairs[n,c(1,2,2,1)], c(0.34,0.34,0.36,0.36), col=rgb(1,0,0,alpha=1),border=NA)}}
+
+dev.off()
+
+
 
 }
 
+
+
 ```
 
+
+```{r RobotsData, fig.cap="I.", fig.align="center", echo=FALSE, fig.width=12, fig.height=12}
+
+knitr::include_graphics('Figures/RobotsData.pdf')
+
+```
+
+```{r RobotsMVPA, fig.cap="I.", fig.align="center", echo=FALSE, fig.width=12, fig.height=12}
+
+knitr::include_graphics('Figures/RobotsMVPA.pdf')
+
+```
 
 ## Experiment 2
 
@@ -166,16 +829,19 @@ if (processdata > 2){
   # 100: asian, 200: western
   # 11: halloween, 12: silicone, 23: real
   legaltriggers <- c(111,112,123,211,212,223)
+  responsetriggers <- c(10,20)
   sublist <- dir(paste0(rawdir,'Masks'),full.names=FALSE)
   subdirs <- dir(paste0(rawdir,'Masks'),full.names=TRUE)
   
   for (s in 1:length(sublist)){
 
-    if (!file.exists(paste0(processeddir,'MasksP/M',s,'_processed.RData'))){
+if (!file.exists(paste0(processeddir,'MasksP/',sublist[s],'_processed.RData'))){
     datafiles <- dir(subdirs[s],pattern='*.csv.gz',full.names=TRUE)
     
     trialcounter <- matrix(0,nrow=3,ncol=6)
     alltrials <- array(0,dim=c(3,6,76,64,1200))
+    allresps <- array(0,dim=c(3,6,76))
+    allresptimes <- allresps
     for (block in 1:3){
 
       EEGdata <- read.csv(datafiles[block])
@@ -189,6 +855,25 @@ if (processdata > 2){
         EEGdata[,ch+2] <- ftemp
       }
 
+          responsetimes <- NULL
+    counter <- 0
+    lasttrigger <- -10000
+    for (n in 1:nrow(EEGdata)){
+      if (EEGdata$Trigger[n] %in% responsetriggers){
+        if (n>(lasttrigger+100)){
+        counter <- counter + 1
+        responsetimes[counter] <- n
+        lasttrigger <- n
+      }}
+    }
+    print(counter)
+    
+    # fix a weird bug where there is a missing trigger
+    if (s==10){if (block==1){responsetimes <- responsetimes[2:counter]}}
+    if (s==16){if (block==2){responsetimes <- responsetimes[2:counter]}}
+    if (s==18){if (block==3){responsetimes <- responsetimes[2:counter]}}
+    if (s==25){if (block==2){responsetimes <- responsetimes[2:counter]}}
+    
     triggertimes <- NULL
     counter <- 0
     lasttrigger <- -10000
@@ -200,7 +885,13 @@ if (processdata > 2){
         lasttrigger <- n
       }}
     }
+    
+   if (s==17){if (block==3){counter <- counter - 1
+      triggertimes <- triggertimes[1:counter]}}
 
+        print(counter)
+    
+ 
     for (trial in 1:counter){
       thiscond <- which(legaltriggers==EEGdata$Trigger[triggertimes[trial]])
       trialcounter[block,thiscond] <- trialcounter[block,thiscond] + 1
@@ -210,15 +901,16 @@ if (processdata > 2){
        temp <- temp - mean(temp[1:200])
        alltrials[block,thiscond,trialcounter[block,thiscond],ch,] <- temp
       }
+            allresps[block,thiscond,trialcounter[block,thiscond]] <- EEGdata$Trigger[responsetimes[trial]]/10
+      allresptimes[block,thiscond,trialcounter[block,thiscond]] <- responsetimes[trial] - triggertimes[trial]
     }
     
     }
     
-    save(file=paste0(processeddir,'MasksP/M',s,'_processed.RData'),list=c('trialcounter','alltrials'))
+    save(file=paste0(processeddir,'MasksP/',sublist[s],'_processed.RData'),list=c('trialcounter','alltrials','allresps','allresptimes'))
   }
   }
 }
-
 
 ```
 
@@ -227,6 +919,239 @@ if (processdata > 2){
 # do MVPA for experiment 2
 
 if (processdata > 1){
+datafiles <- dir(paste0(processeddir,'MasksP'),pattern='*.RData',full.names=TRUE)
+totaliterations <- niterations
+
+for (s in 1:length(datafiles)){
+  tic()
+  print(s)
+  load(datafiles[s])
+  
+  subjmvpa <- array(0,dim=c(3,1200))
+  subjmeans <- array(0,dim=c(3,64,1200))
+
+  # collapse trials across block and ethnicity
+  temptrials <- array(0,dim=c(3,444,64,1200))
+  tempRT <- array(0,dim=c(3,444))
+  tempresp <- array(0,dim=c(3,444))
+  condcount <- c(0,0,0)
+  for (cond in 1:3){
+    for (block in 1:3){
+      temp <- alltrials[block,cond,1:trialcounter[block,cond],,]
+      i <- condcount[cond] + (1:trialcounter[block,cond])
+    temptrials[cond,i,,] <- temp
+    tempresp[cond,i] <- allresps[block,cond,1:trialcounter[block,cond]]
+    tempRT[cond,i] <- allresptimes[block,cond,1:trialcounter[block,cond]]
+    condcount[cond] <- condcount[cond] + trialcounter[block,cond]
+    
+      temp <- alltrials[block,cond+3,1:trialcounter[block,cond+3],,]
+      i <- condcount[cond] + (1:trialcounter[block,cond+3])
+    temptrials[cond,i,,] <- temp
+        tempresp[cond,i] <- allresps[block,cond+3,1:trialcounter[block,cond+3]]
+    tempRT[cond,i] <- allresptimes[block,cond+3,1:trialcounter[block,cond+3]]
+    condcount[cond] <- condcount[cond] + trialcounter[block,cond+3]    
+    }
+  }
+  trialcounter <- condcount
+  allresps <- tempresp
+  allresptimes <- tempRT
+  alltrials <- temptrials
+  rm(temptrials)
+  rm(tempresp)
+  rm(tempRT)
+
+  for (cond in 1:3){
+  sdtime <- apply(alltrials[cond,1:trialcounter[cond],,],1:2,sd)
+  cutoff <- quantile(sdtime,0.95)
+  includetrials <- sdtime*0
+  includetrials[which(sdtime<cutoff)] <- 1
+  
+    temp <- alltrials[cond,,,]
+    for (ch in 1:64){
+      if (sum(includetrials[,ch])>1){
+    subjmeans[cond,ch,] <- apply(temp[which(includetrials[,ch]>0),ch,],2,mean)
+    }}
+  }
+  
+  normdata <- alltrials*0
+  for (ch in 1:64){
+    for (t in 1:1200){
+      meanV <- mean(alltrials[,1:trialcounter[cond],ch,t])
+      for (cond in 1:3){
+      normdata[cond,1:trialcounter[cond],ch,t] <- alltrials[cond,1:trialcounter[cond],ch,t] - meanV
+      }
+    }
+  }
+  
+  comparisons <- matrix(c(1,2,1,3,2,3),nrow=3,ncol=2,byrow=TRUE)
+  for (comp in 1:nrow(comparisons)){
+    allaccuracy <- matrix(0,nrow=niterations,ncol=1200)
+  for (n in 1:totaliterations){
+    
+    mintrials <- min(trialcounter[comparisons[comp,1:2]])
+    # random shuffling of the trial order
+    tempA <- normdata[comparisons[comp,1],sample(1:trialcounter[comparisons[comp,1]],mintrials),,]
+    tempB <- normdata[comparisons[comp,2],sample(1:trialcounter[comparisons[comp,2]],mintrials),,]
+    
+    # create averaged subsets of trials
+    condA <- array(0,dim=c(nsplits,64,1200))
+    condB <- array(0,dim=c(nsplits,64,1200))
+    ntrialspermeanA <- floor(dim(tempA)[1]/nsplits)
+    ntrialspermeanB <- floor(dim(tempB)[1]/nsplits)
+    for (i in 1:nsplits){
+      condA[i,,] <- apply(tempA[(1+((i-1)*ntrialspermeanA)):(i*ntrialspermeanA),,],2:3,mean)
+      condB[i,,] <- apply(tempB[(1+((i-1)*ntrialspermeanB)):(i*ntrialspermeanB),,],2:3,mean)
+    }
+    
+    for (t in 1:1200){
+      trainingdata <- rbind(condA[1:(nsplits-1),,t],condB[1:(nsplits-1),,t])
+      traininglabels <- gl(2,nsplits-1)
+      testingdata <- rbind(condA[nsplits,,t],condB[nsplits,,t])
+      testinglabels <- gl(2,1)
+      model <- e1071::svm(trainingdata,traininglabels,scale=FALSE)
+      pred <- predict(model,newdata = testingdata)
+      allaccuracy[n,t] <- sum(pred==testinglabels)/length(testinglabels)
+    }
+  }
+    
+    subjmvpa[comp,] <- colMeans(allaccuracy)
+  }
+  save(file=paste0('local/masksmvpa/M',s,'_mvpa.RData'),list=c('subjmvpa','subjmeans','totaliterations','allresps','allresptimes','trialcounter'))
+
+toc()  
+}
+
+
+}
+
+
+```
+
+```{r include=FALSE, results='hide'}
+
+# statistical analysis for experiment 2
+
+processeddir <- 'local/MasksProcessed/'
+
+if (processdata > 0){
+  
+  if (!file.exists('local/GroupDataMasks.RData')){
+
+datafiles <- dir(processeddir,pattern='*decoding.mat',full.names=TRUE)    
+allmvpa <- array(0,dim=c(length(datafiles),3,1201))  
+for (s in 1:length(datafiles)){
+  data <- readMat(datafiles[s])
+  allmvpa[s,,] <- data$Value/100
+}    
+times <- data$Time
+
+datafiles1 <- dir(processeddir,pattern='*_101.mat',full.names=TRUE)    
+datafiles2 <- dir(processeddir,pattern='*_102.mat',full.names=TRUE)    
+datafiles3 <- dir(processeddir,pattern='*_103.mat',full.names=TRUE)    
+allmeans <- array(0,dim=c(length(datafiles1),3,66,1201))
+for (s in 1:length(datafiles1)){
+  data <- readMat(datafiles1[s])
+  allmeans[s,1,,] <- data$F*10^6
+  data <- readMat(datafiles2[s])
+  allmeans[s,2,,] <- data$F*10^6
+  data <- readMat(datafiles3[s])
+  allmeans[s,3,,] <- data$F*10^6
+}     
+
+
+# datafiles <- dir(paste0('local/robotsmvpa'),pattern='*.RData',full.names=TRUE)
+# allmvpa <- array(0,dim=c(length(datafiles),3,1200))
+# allmeans <- array(0,dim=c(length(datafiles),3,64,1200))
+# allRT <- matrix(0,nrow=length(datafiles),ncol=3)
+# prophuman <- matrix(0,nrow=length(datafiles),ncol=3)
+# alldprime <- matrix(0,nrow=length(datafiles),ncol=3)
+# for (s in 1:length(datafiles)){
+#   load(datafiles[s])
+#   allmvpa[s,,] <- subjmvpa
+#   allmeans[s,,,] <- subjmeans
+#   
+#   hits <- NULL
+#   misses <- NULL
+#   for (cond in 1:3){
+#   allRT[s,cond] <- mean(20*log10(allresptimes[cond,which(allresptimes[cond,]>0)]))
+#   prophuman[s,cond] <- sum(allresps[cond,1:trialcounter[cond]]-1)/trialcounter[cond]
+#   
+#   if (cond<3){
+#   hits[cond] <- trialcounter[cond]-sum(allresps[cond,1:trialcounter[cond]]-1)
+#   misses[cond] <- sum(allresps[cond,1:trialcounter[cond]]-1)
+#   }
+#   if (cond==3){
+#   hits[cond] <- sum(allresps[cond,1:trialcounter[cond]]-1)
+#   misses[cond] <- trialcounter[cond]-sum(allresps[cond,1:trialcounter[cond]]-1)
+#   }
+#   }
+#   
+#   hitrate <- hits/(hits + misses) 
+#   for (cond in 1:3){
+#     if (cond<3){falsealarms <- misses[3]/ (misses[3] + hits[3])}
+#     if (cond==3){falsealarms <- sum(misses[1:2]) / (sum(misses[1:2]) + sum(hits[1:2]))}
+#   alldprime[s,cond] <- qnorm(hitrate[cond]) - qnorm(falsealarms)
+#   }
+# }
+# 
+# alldprime[which(is.infinite(alldprime))] <- 5
+# 
+# dataforANOVA <- melt(alldprime)
+# colnames(dataforANOVA) <- c('Participant','Condition','dprime')
+# dataforANOVA$Participant <- as.factor(dataforANOVA$Participant)
+# dataforANOVA$Condition <- as.factor(dataforANOVA$Condition)
+# bfdprime <- extractBF(anovaBF(dprime ~ Condition,dataforANOVA,whichRandom='Participant'))$bf
+# 
+# dataforANOVA <- melt(allRT)
+# colnames(dataforANOVA) <- c('Participant','Condition','RT')
+# dataforANOVA$Participant <- as.factor(dataforANOVA$Participant)
+# dataforANOVA$Condition <- as.factor(dataforANOVA$Condition)
+# bfRT <- extractBF(anovaBF(RT ~ Condition,dataforANOVA,whichRandom='Participant'))$bf
+
+subjmeanERP <- apply(allmeans,c(1,3,4),mean)
+meanERP <- apply(allmeans,2:4,mean)
+meanMVPA <- apply(allmvpa,2:3,mean)
+grandmeanERP <- apply(subjmeanERP[,targetelectrodes,],3,mean)
+subjERPs <- apply(subjmeanERP[,targetelectrodes,],c(1,3),mean)
+condERPs <- apply(allmeans[,,targetelectrodes,],c(1,2,4),mean)
+
+mlimits <- matrix(0,nrow=6,ncol=1201)
+mBF <- matrix(0,nrow=3,ncol=1201)
+bspop <- 1:nbootstraps
+for (n in 1:1201){
+
+  for (cond in 1:3){
+  for (b in 1:nbootstraps){
+    bspop[b] <- mean(sample(allmvpa[,cond,n],replace=TRUE))
+  }
+mlimits[(1:2)+((cond-1)*2),n] <- quantile(bspop,probs=c(0.025,0.975)) 
+mBF[cond,n] <- extractBF(ttestBF(allmvpa[,cond,n],mu=0.5))$bf
+  }
+}
+
+comparisons <- matrix(c(1,2,1,3,2,3),nrow=3,ncol=2,byrow=TRUE)
+limits <- matrix(0,nrow=8,ncol=1201)
+ERP_BF <- matrix(0,nrow=3,ncol=1201)
+bspop <- 1:nbootstraps
+for (n in 1:1201){
+
+  for (b in 1:nbootstraps){
+    bspop[b] <- mean(sample(subjERPs[,n],replace=TRUE))
+  }
+  limits[1:2,n] <- quantile(bspop,probs=c(0.025,0.975)) 
+  
+  for (cond in 1:3){
+  for (b in 1:nbootstraps){
+    bspop[b] <- mean(sample(condERPs[,cond,n],replace=TRUE))
+  }
+  limits[(1:2)+(cond*2),n] <- quantile(bspop,probs=c(0.025,0.975)) 
+  ERP_BF[cond,n] <- extractBF(ttestBF(condERPs[,comparisons[cond,1],n],condERPs[,comparisons[cond,2],n],paired=TRUE))$bf
+  }
+}
+
+
+save(file='local/GroupDataMasks.RData',list=c('allmeans','allmvpa','mlimits','subjmeanERP','limits','grandmeanERP','subjERPs','condERPs','meanMVPA','meanERP','mBF','ERP_BF'))
+}
 
 }
 
@@ -236,17 +1161,331 @@ if (processdata > 1){
 
 # create figures for experiment 2
 
+if (file.exists('local/GroupDataMasks.RData')){load('local/GroupDataMasks.RData')}  
 if (processdata > 0){
+
+pdf(paste0('Figures/MaskData.pdf'), bg="transparent", height = 12, width = 12)
+
+par(mfrow=c(2,2))
+
+  plotlims <- c(0,5,0.5,3.5)  
+  ticklocsy <- c(0.5,1,2,3,3.5)    
+  ticklocsx <- 0:5    # locations of tick marks on y axis
+  ticklabelsy <- c("","Halloween","Silicone","Human","")       
+  ticklabelsx <- ticklocsx    # set labels for y ticks
+  
+  plot(x=NULL,y=NULL,axes=FALSE, ann=FALSE, xlim=plotlims[1:2], ylim=plotlims[3:4])  
+  axis(1, at=ticklocsx, tck=0.01, lab=F, lwd=2)     
+  axis(2, at=ticklocsy, tck=0.01, lab=F, lwd=2)
+  mtext(text = ticklabelsx, side = 1, at=ticklocsx)     
+  mtext(text = ticklabelsy, side = 2, at=ticklocsy, line=0.2, las=3) 
+  title(xlab="d prime", col.lab=rgb(0,0,0), line=1.5, cex.lab=1.5)
+
+  # a <- density(alldprime[,1],cut=6)
+  # a$y <- 0.35*a$y/max(a$y)
+  # polygon(a$x,1.1+a$y,border=NA,col=collist[1])
+  # 
+  #   a <- density(alldprime[,2])
+  # a$y <- 0.35*a$y/max(a$y)
+  # polygon(a$x,2.1+a$y,border=NA,col=collist[2])
+  # 
+  #   a <- density(alldprime[,3])
+  # a$y <- 0.35*a$y/max(a$y)
+  # polygon(a$x,3.1+a$y,border=NA,col=collist[3])
+  # 
+  # xvals <- seq(-0.1,0.1,length=nrow(alldprime))
+  # points(alldprime[,1],1+xvals-0.2,pch=16)
+  # points(alldprime[,2],2+xvals-0.2,pch=15)
+  # points(alldprime[,3],3+xvals-0.2,pch=18)
+  # 
+  # for (cond in 1:3){
+  # bs <- NULL
+  # for (n in 1:nbootstraps){bs[n] <- mean(sample(alldprime[,cond],replace=TRUE))}
+  # ci <- quantile(bs,c(0.025,0.975))
+  # arrows(mean(alldprime[,cond]),cond,ci[1],cond,angle=90,length=0.1,lwd=3)
+  # arrows(mean(alldprime[,cond]),cond,ci[2],cond,angle=90,length=0.1,lwd=3)
+  # }
+  # 
+  # points(mean(alldprime[,1]),1,pch=21,cex=2,lwd=2,bg=collist[1])
+  # points(mean(alldprime[,2]),2,pch=22,cex=2,lwd=2,bg=collist[2])
+  # points(mean(alldprime[,3]),3,pch=23,cex=2,lwd=2,bg=collist[3])
+  # 
+
+  
+  plotlims <- c(52,64,0.5,3.5)  
+  ticklocsy <- c(0.5,1,2,3,3.5)    
+  ticklocsx <- c(52,58,64)    
+  ticklabelsy <- c("","Halloween","Silicone","Human","")       
+  ticklabelsx <- c(400,800,1600)    # set labels for y ticks
+  
+  plot(x=NULL,y=NULL,axes=FALSE, ann=FALSE, xlim=plotlims[1:2], ylim=plotlims[3:4])  
+  axis(1, at=ticklocsx, tck=0.01, lab=F, lwd=2)     
+  axis(2, at=ticklocsy, tck=0.01, lab=F, lwd=2)
+  mtext(text = ticklabelsx, side = 1, at=ticklocsx)     
+  mtext(text = ticklabelsy, side = 2, at=ticklocsy, line=0.2, las=3) 
+  title(xlab="Reaction time (ms)", col.lab=rgb(0,0,0), line=1.5, cex.lab=1.5)
+
+  # a <- density(allRT[,1],cut=6)
+  # a$y <- 0.35*a$y/max(a$y)
+  # polygon(a$x,1.1+a$y,border=NA,col=collist[1])
+  # 
+  #   a <- density(allRT[,2])
+  # a$y <- 0.35*a$y/max(a$y)
+  # polygon(a$x,2.1+a$y,border=NA,col=collist[2])
+  # 
+  #   a <- density(allRT[,3])
+  # a$y <- 0.35*a$y/max(a$y)
+  # polygon(a$x,3.1+a$y,border=NA,col=collist[3])
+  # 
+  # xvals <- seq(-0.1,0.1,length=nrow(allRT))
+  # points(allRT[,1],1+xvals-0.2,pch=16)
+  # points(allRT[,2],2+xvals-0.2,pch=15)
+  # points(allRT[,3],3+xvals-0.2,pch=18)
+  # 
+  # for (cond in 1:3){
+  # bs <- NULL
+  # for (n in 1:nbootstraps){bs[n] <- mean(sample(allRT[,cond],replace=TRUE))}
+  # ci <- quantile(bs,c(0.025,0.975))
+  # arrows(mean(allRT[,cond]),cond,ci[1],cond,angle=90,length=0.1,lwd=3)
+  # arrows(mean(allRT[,cond]),cond,ci[2],cond,angle=90,length=0.1,lwd=3)
+  # }
+  # points(mean(allRT[,1]),1,pch=21,cex=2,lwd=2,bg=collist[1])
+  # points(mean(allRT[,2]),2,pch=22,cex=2,lwd=2,bg=collist[2])
+  # points(mean(allRT[,3]),3,pch=23,cex=2,lwd=2,bg=collist[3])
+
+
+plotlims <- c(-200,1000,0,1) 
+ticklocsx <- seq(-200,1000,200)  
+ticklocsy <- seq(0,1,0.25)    
+ticklabelsx <- ticklocsx      
+ticklabelsy <- ticklocsy*100   
+
+plot(x=NULL,y=NULL,axes=FALSE, ann=FALSE, xlim=plotlims[1:2], ylim=plotlims[3:4])   
+axis(1, at=ticklocsx, tck=0.01, lab=F, lwd=2)     
+axis(2, at=ticklocsy, tck=0.01, lab=F, lwd=2)
+
+mtext(text = ticklabelsx, side = 1, at=ticklocsx)  
+mtext(text = ticklabelsy, side = 2, at=ticklocsy, line=0.2, las=1) 
+title(xlab="Time (ms)", col.lab=rgb(0,0,0), line=1.2, cex.lab=1.5)  #}    
+title(ylab="Classifier accuracy (%)", col.lab=rgb(0,0,0), line=1.5, cex.lab=1.5)
+
+lines(c(-200, 1000),c(0.5, 0.5), col='black', lty=2)
+lines(c(0,0),c(0,1), col='black')
+
+
+polygon(c(-200:1000,1000:-200), c(mlimits[1,],mlimits[2,1201:1]), col=addalpha('black',0.3),border=NA)
+polygon(c(-200:1000,1000:-200), c(mlimits[3,],mlimits[4,1201:1]), col=addalpha('blue',0.3),border=NA)
+polygon(c(-200:1000,1000:-200), c(mlimits[5,],mlimits[6,1201:1]), col=addalpha('green',0.3),border=NA)
+
+
+lines(-200:1000,meanMVPA[1,], col='black', lwd=3, cex=0.5)     
+lines(-200:1000,meanMVPA[2,], col='blue', lwd=3, cex=0.5)     
+lines(-200:1000,meanMVPA[3,], col='green', lwd=3, cex=0.5)    
+
+
+
+
+
+plotlims <- c(-200,1000,-12,12)  
+ticklocsx <- seq(-200,1000,200)    # locations of tick marks on x axis
+ticklocsy <- seq(-12,12,4)    # locations of tick marks on y axis
+ticklabelsx <- ticklocsx        # set labels for x ticks
+ticklabelsy <- ticklocsy    # set labels for y ticks
+
+plot(x=NULL,y=NULL,axes=FALSE, ann=FALSE, xlim=plotlims[1:2], ylim=plotlims[3:4])  
+axis(1, at=ticklocsx, tck=0.01, lab=F, lwd=2)     # plot tick marks (no labels)
+axis(2, at=ticklocsy, tck=0.01, lab=F, lwd=2)
+mtext(text = ticklabelsx, side = 1, at=ticklocsx, line=0.2, cex=1.5)    
+mtext(text = ticklabelsy, side = 2, at=ticklocsy, line=0.2, las=1, cex=1.5)  
+title(xlab="Time (ms)", col.lab=rgb(0,0,0), line=1.5, cex.lab=1.8)   
+title(ylab="Amplitude (µV)", col.lab=rgb(0,0,0), line=2.2, cex.lab=1.8)
+
+lines(c(-200,1000),c(0,0),lty=1)
+lines(c(0,0),c(-20,20),lty=1)
+
+polygon(c(-200:1000,1000:-200), c(limits[3,],limits[4,1201:1]), col=addalpha(collist[1],0.3),border=NA)
+polygon(c(-200:1000,1000:-200), c(limits[5,],limits[6,1201:1]), col=addalpha(collist[2],0.3),border=NA)
+polygon(c(-200:1000,1000:-200), c(limits[7,],limits[8,1201:1]), col=addalpha(collist[3],0.3),border=NA)
+
+lines(-200:1000, colMeans(meanERP[1,targetelectrodes,]), lwd=3, col=collist[1])     
+lines(-200:1000, colMeans(meanERP[2,targetelectrodes,]), lwd=3, col=collist[2])     
+lines(-200:1000, colMeans(meanERP[3,targetelectrodes,]), lwd=3, col=collist[3])     
+
+dev.off()
+
+
+
+pdf(paste0('Figures/MaskMVPA.pdf'), bg="transparent", height = 12, width = 12)
+
+par(mfrow=c(2,2))
+
+times <- -199:1200
+
+plotlims <- c(-200,1000,-12,12)  
+ticklocsx <- seq(-200,1000,200)    # locations of tick marks on x axis
+ticklocsy <- seq(-12,12,4)    # locations of tick marks on y axis
+ticklabelsx <- ticklocsx        # set labels for x ticks
+ticklabelsy <- ticklocsy    # set labels for y ticks
+
+plot(x=NULL,y=NULL,axes=FALSE, ann=FALSE, xlim=plotlims[1:2], ylim=plotlims[3:4])  
+axis(1, at=ticklocsx, tck=0.01, lab=F, lwd=2)     # plot tick marks (no labels)
+axis(2, at=ticklocsy, tck=0.01, lab=F, lwd=2)
+mtext(text = ticklabelsx, side = 1, at=ticklocsx, line=0.2, cex=1.5)    
+mtext(text = ticklabelsy, side = 2, at=ticklocsy, line=0.2, las=1, cex=1.5)  
+title(xlab="Time (ms)", col.lab=rgb(0,0,0), line=1.5, cex.lab=1.8)   
+title(ylab="Amplitude (µV)", col.lab=rgb(0,0,0), line=2.2, cex.lab=1.8)
+
+lines(c(-200,1000),c(0,0),lty=1)
+lines(c(0,0),c(-20,20),lty=1)
+
+polygon(c(-200:1000,1000:-200), c(limits[3,],limits[4,1201:1]), col=addalpha(collist[1],0.3),border=NA)
+polygon(c(-200:1000,1000:-200), c(limits[7,],limits[8,1201:1]), col=addalpha(collist[3],0.3),border=NA)
+
+lines(-200:1000, colMeans(meanERP[1,targetelectrodes,]), lwd=3, col=collist[1])     
+lines(-200:1000, colMeans(meanERP[3,targetelectrodes,]), lwd=3, col=collist[3])     
+
+
+plotlims <- c(-200,1000,-12,12)  
+ticklocsx <- seq(-200,1000,200)    # locations of tick marks on x axis
+ticklocsy <- seq(-12,12,4)    # locations of tick marks on y axis
+ticklabelsx <- ticklocsx        # set labels for x ticks
+ticklabelsy <- ticklocsy    # set labels for y ticks
+
+plot(x=NULL,y=NULL,axes=FALSE, ann=FALSE, xlim=plotlims[1:2], ylim=plotlims[3:4])  
+axis(1, at=ticklocsx, tck=0.01, lab=F, lwd=2)     # plot tick marks (no labels)
+axis(2, at=ticklocsy, tck=0.01, lab=F, lwd=2)
+mtext(text = ticklabelsx, side = 1, at=ticklocsx, line=0.2, cex=1.5)    
+mtext(text = ticklabelsy, side = 2, at=ticklocsy, line=0.2, las=1, cex=1.5)  
+title(xlab="Time (ms)", col.lab=rgb(0,0,0), line=1.5, cex.lab=1.8)   
+title(ylab="Amplitude (µV)", col.lab=rgb(0,0,0), line=2.2, cex.lab=1.8)
+
+lines(c(-200,1000),c(0,0),lty=1)
+lines(c(0,0),c(-20,20),lty=1)
+
+polygon(c(-200:1000,1000:-200), c(limits[5,],limits[6,1201:1]), col=addalpha(collist[2],0.3),border=NA)
+polygon(c(-200:1000,1000:-200), c(limits[7,],limits[8,1201:1]), col=addalpha(collist[3],0.3),border=NA)
+
+lines(-200:1000, colMeans(meanERP[2,targetelectrodes,]), lwd=3, col=collist[2])     
+lines(-200:1000, colMeans(meanERP[3,targetelectrodes,]), lwd=3, col=collist[3])     
+
+
+plotlims <- c(-200,1000,0,1) 
+ticklocsx <- seq(-200,1000,200)  
+ticklocsy <- seq(0,1,0.25)    
+ticklabelsx <- ticklocsx      
+ticklabelsy <- ticklocsy*100   
+
+plot(x=NULL,y=NULL,axes=FALSE, ann=FALSE, xlim=plotlims[1:2], ylim=plotlims[3:4])   
+axis(1, at=ticklocsx, tck=0.01, lab=F, lwd=2)     
+axis(2, at=ticklocsy, tck=0.01, lab=F, lwd=2)
+
+mtext(text = ticklabelsx, side = 1, at=ticklocsx)  
+mtext(text = ticklabelsy, side = 2, at=ticklocsy, line=0.2, las=1) 
+title(xlab="Time (ms)", col.lab=rgb(0,0,0), line=1.2, cex.lab=1.5)  #}    
+title(ylab="Classifier accuracy (%)", col.lab=rgb(0,0,0), line=1.5, cex.lab=1.5)
+
+lines(c(-200, 1000),c(0.5, 0.5), col='black', lty=2)
+lines(c(0,0),c(0,1), col='black')
+
+
+polygon(c(-200:1000,1000:-200), c(mlimits[3,],mlimits[4,1201:1]), col=addalpha('blue',0.3),border=NA)
+
+
+lines(-200:1000,meanMVPA[2,], col='blue', lwd=3, cex=0.5)     
+
+allbfs <- mBF[2,]
+lowsig <- 0.5 + (1:1201)*0
+midsig <- 0.5 + (1:1201)*0
+hisig <- 0.5 + (1:1201)*0
+for (t in 1:1201){
+ if (allbfs[t]>=3 & allbfs[t]<10){lowsig[t] <- allmeans[t]}
+ if (allbfs[t]>=10 & allbfs[t]<30){midsig[t] <- allmeans[t]}
+ if (allbfs[t]>=30){hisig[t] <- allmeans[t]}
+}
+
+linestartstop <- times[allbfs>=3 & allbfs<10]
+if (length(linestartstop)>1){xpairs <- getstartstop(linestartstop)
+for (n in 1:((length(xpairs)/2)-1)){polygon(xpairs[n,c(1,2,2,1)], c(0.34,0.34,0.36,0.36), col=rgb(1,1,0,alpha=1),border=NA)}}
+
+linestartstop <- times[allbfs>=10 & allbfs<30]
+if (length(linestartstop)>1){xpairs <- getstartstop(linestartstop)
+for (n in 1:((length(xpairs)/2)-1)){polygon(xpairs[n,c(1,2,2,1)], c(0.34,0.34,0.36,0.36), col=rgb(1,0.5,0,alpha=1),border=NA)}}
+
+linestartstop <- times[allbfs>=30]
+if (length(linestartstop)>1){xpairs <- getstartstop(linestartstop)
+for (n in 1:((length(xpairs)/2)-1)){polygon(xpairs[n,c(1,2,2,1)], c(0.34,0.34,0.36,0.36), col=rgb(1,0,0,alpha=1),border=NA)}}
+
+
+
+plotlims <- c(-200,1000,0,1) 
+ticklocsx <- seq(-200,1000,200)  
+ticklocsy <- seq(0,1,0.25)    
+ticklabelsx <- ticklocsx      
+ticklabelsy <- ticklocsy*100   
+
+plot(x=NULL,y=NULL,axes=FALSE, ann=FALSE, xlim=plotlims[1:2], ylim=plotlims[3:4])   
+axis(1, at=ticklocsx, tck=0.01, lab=F, lwd=2)     
+axis(2, at=ticklocsy, tck=0.01, lab=F, lwd=2)
+
+mtext(text = ticklabelsx, side = 1, at=ticklocsx)  
+mtext(text = ticklabelsy, side = 2, at=ticklocsy, line=0.2, las=1) 
+title(xlab="Time (ms)", col.lab=rgb(0,0,0), line=1.2, cex.lab=1.5)  #}    
+title(ylab="Classifier accuracy (%)", col.lab=rgb(0,0,0), line=1.5, cex.lab=1.5)
+
+lines(c(-200, 1000),c(0.5, 0.5), col='black', lty=2)
+lines(c(0,0),c(0,1), col='black')
+
+
+polygon(c(-200:1000,1000:-200), c(mlimits[5,],mlimits[6,1201:1]), col=addalpha('green',0.3),border=NA)
+
+
+lines(-200:1000,meanMVPA[3,], col='green', lwd=3, cex=0.5)    
+
+
+allbfs <- mBF[3,]
+lowsig <- 0.5 + (1:1201)*0
+midsig <- 0.5 + (1:1201)*0
+hisig <- 0.5 + (1:1201)*0
+for (t in 1:1201){
+ if (allbfs[t]>=3 & allbfs[t]<10){lowsig[t] <- allmeans[t]}
+ if (allbfs[t]>=10 & allbfs[t]<30){midsig[t] <- allmeans[t]}
+ if (allbfs[t]>=30){hisig[t] <- allmeans[t]}
+}
+
+linestartstop <- times[allbfs>=3 & allbfs<10]
+if (length(linestartstop)>1){xpairs <- getstartstop(linestartstop)
+for (n in 1:((length(xpairs)/2)-1)){polygon(xpairs[n,c(1,2,2,1)], c(0.34,0.34,0.36,0.36), col=rgb(1,1,0,alpha=1),border=NA)}}
+
+linestartstop <- times[allbfs>=10 & allbfs<30]
+if (length(linestartstop)>1){xpairs <- getstartstop(linestartstop)
+for (n in 1:((length(xpairs)/2)-1)){polygon(xpairs[n,c(1,2,2,1)], c(0.34,0.34,0.36,0.36), col=rgb(1,0.5,0,alpha=1),border=NA)}}
+
+linestartstop <- times[allbfs>=30]
+if (length(linestartstop)>1){xpairs <- getstartstop(linestartstop)
+for (n in 1:((length(xpairs)/2)-1)){polygon(xpairs[n,c(1,2,2,1)], c(0.34,0.34,0.36,0.36), col=rgb(1,0,0,alpha=1),border=NA)}}
+
+dev.off()
+
+
 
 }
 
-```
 
-```{r pupildata, fig.cap="Caption.", fig.align="center", echo=FALSE}
-
-# knitr::include_graphics(paste0('Figures/pupildata.pdf'))
 
 ```
+
+```{r MasksData, fig.cap="I.", fig.align="center", echo=FALSE, fig.width=12, fig.height=12}
+
+knitr::include_graphics('Figures/MaskData.pdf')
+
+```
+
+```{r MasksMVPA, fig.cap="I.", fig.align="center", echo=FALSE, fig.width=12, fig.height=12}
+
+knitr::include_graphics('Figures/MaskMVPA.pdf')
+
+```
+
 # Discussion
 
 
