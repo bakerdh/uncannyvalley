@@ -98,8 +98,7 @@
   pdfcreator={LaTeX via pandoc}}
 
 \title{Neural correlates of the uncanny valley effect\\
-for robots and hyper-realistic masks\\
-(for submission to Computers in Human Behavior)}
+for robots and hyper-realistic masks}
 \author{Shona Fitzpatrick, Ailish K. Byrne, Alex Headley, Jet G. Sanders,\\
 Helen Petrie, Rob Jenkins \& Daniel H. Baker (\href{mailto:daniel.baker@york.ac.uk}{\nolinkurl{daniel.baker@york.ac.uk}})}
 \date{University of York}
@@ -113,11 +112,11 @@ Helen Petrie, Rob Jenkins \& Daniel H. Baker (\href{mailto:daniel.baker@york.ac.
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
 
-Many people report an aversion to entities that are superficially human-like, but on closer inspection are actually artificial. Examples include humanoid robots (androids), puppets, hyper-realistic masks, and computer-generated images or movies. The term `uncanny valley' (Mori, 1970; English translation in Mori et al., 2012) describes the idea that entities that are clearly human or clearly artificial do not evoke unease, whereas artificial entities that are human-like are disconcerting. Understanding these experiences is increasingly important as artificial entities become more integrated into our everyday lives, however at present relatively little is known about the neural underpinnings of the uncanny valley effect.
+Many people report an aversion to entities that are superficially human-like, but on closer inspection are actually artificial. Examples include humanoid robots (androids), puppets, hyper-realistic masks, and computer-generated images or movies. The term `uncanny valley' (Mori, 1970; English translation in Mori et al., 2012) describes the idea that entities that are clearly human or clearly artificial do not evoke unease, whereas artificial entities that are human-like are disconcerting. Understanding these experiences is increasingly important as artificial entities become more integrated into our everyday lives, however at present relatively little is known about the neural underpinnings of the uncanny valley effect (for a recent review, see Vaitonytė et al., 2023).
 
 Neural responses to faces and bodies in general are well-characterised, and there appear to be specialised brain regions devoted to both (reviewed in Hu et al., 2020). For example, areas of the occipital lobe (Gauthier et al., 2000) and fusiform gyrus (Kanwisher et al., 1997) respond more to faces than non-face stimuli, and sections of extrastriate cortex are responsive to bodies (Downing et al., 2001). There are also event-related potential (ERP) signals associated with face and body stimuli, though their precise purpose is still debated (Thierry et al., 2007). It seems highly likely that `uncanny' images will activate these same processes, yet it is unclear whether the sense of unease they produce occurs at bottom-up sensory stages, or is modulated by more top-down cognitive factors.
 
-One previous study has measured fMRI responses to moving stimuli designed to elicit an uncanny valley effect. Saygin et al. (2012) found repetition suppression effects in action-specific brain regions responding to movies of androids that had a biological appearance, but mechanical motion. These effects were stronger than for movies of humans or mechanical robots performing the same actions. A more recent electroencephalography (EEG) study (Urgen et al., 2018) identified a difference in the N400 component between dynamic and static conditions using the same stimuli. Although this difference was strongest over frontal electrodes, source reconstruction of the N400 itself suggested a left-lateralised source in temporo-parietal cortex, consistent with the fMRI results (Saygin et al., 2012). The authors interpret both of these findings as being due to the discrepancy between the human-like appearance and the clearly non-biological motion of the robot.
+A previous study by Saygin et al. (2012) measured fMRI responses to moving stimuli designed to elicit an uncanny valley effect. They found repetition suppression effects in action-specific brain regions responding to movies of androids that had a biological appearance, but mechanical motion. These effects were stronger than for movies of humans or mechanical robots performing the same actions. A more recent electroencephalography (EEG) study (Urgen et al., 2018) identified a difference in the N400 component between dynamic and static conditions using the same stimuli. Although this difference was strongest over frontal electrodes, source reconstruction of the N400 itself suggested a left-lateralised source in temporo-parietal cortex, consistent with the fMRI results (Saygin et al., 2012). The authors interpret both of these findings as being due to the discrepancy between the human-like appearance and the clearly non-biological motion of the robot.
 
 Our aim here was to further investigate neural correlates of the uncanny valley effect. We achieve this through two EEG experiments, in which we measure neural responses to static images. In the first experiment, the stimuli were humans, machine-like robots, and human-like robots (see Figure \ref{fig:stimexamples}a). In the second experiment we aimed to generalise the finding by using images of people wearing no masks, wearing obvious masks (e.g.~carnival or Halloween masks), and wearing hyper-realistic silicone masks (Sanders et al., 2017) (see Figure \ref{fig:stimexamples}b). Rather than focus on specific ERP components, we use a multivariate pattern classification approach to identify time windows in which information in the EEG signal can be used to distinguish between pairs of conditions. Our rationale is that timepoints where signals evoked by human faces can be distinguished from those evoked by human-like robots, or hyper-realistic masks, are candidates for a neural signature of the uncanny valley effect.
 
@@ -213,7 +212,7 @@ The results of Experiment 2 were similar to those of Experiment 1, despite using
 
 \begin{figure}
 
-{\centering \includegraphics{Figures/MaskSData} 
+{\centering \includegraphics{Figures/MasksData} 
 
 }
 
@@ -224,7 +223,7 @@ The grand average ERP waveform for Experiment 2 (see Figure \ref{fig:MasksData}c
 
 \begin{figure}
 
-{\centering \includegraphics{Figures/MaskSMVPA} 
+{\centering \includegraphics{Figures/MasksMVPA} 
 
 }
 
@@ -235,6 +234,12 @@ Multivariate pattern analysis revealed extremely high classification accuracy (u
 
 \hypertarget{discussion}{%
 \section{Discussion}\label{discussion}}
+
+Across two experiments using diverse stimuli, we identified a potential neurophysiological signature of the `uncanny valley' effect. EEG responses to androids or silicone masks could be distinguished from responses to human faces at around 100ms after stimulus onset, and also in a later time window around 500-800ms after stimulus onset. There were no clear differences in the unimodal ERP response at posterior electrodes, but performance of a multivariate pattern classifier was above chance in these time windows. This is a different pattern from that observed for more obviously non-human stimuli (robots and Halloween masks), where there were both univariate and multivariate differences, and the multivariate discrimination accuracy was above chance for an extended time window. Perceptual judgements indicated that identification performance for uncanny valley stimuli was relatively poor, indicating confusion with real human images. The similarity in results across our two experiments is striking, and constitutes an internal conceptual replication of our main findings.
+
+Big theory
+
+Another increasingly common situation that triggers the `uncanny valley' experience is in the domain of computer-generated images and movies. Artificial intelligence algorithms are now able to generate images and movies based on text prompts (for example ``a picture of a girl flying a kite in a field'') that often include human subjects. However, at time of writing, images of humans often contain errors, such as the presence of too many limbs, digits, teeth etc. Synthetic movies often contain continuity errors, and issues reproducing biological motion. Many of these errors are subtle and take time to spot, but it is also the case that human observers can report that images look `wrong' without explicitly knowing why. The neural uncanny valley effect that we report here might prove a useful index of these instinctive reactions, and could even potentially be used to improve artificial intelligence algorithms. For example, images could be penalised for producing neural responses that differed from those for natural images.
 
 \hypertarget{conclusions}{%
 \section{Conclusions}\label{conclusions}}
@@ -297,6 +302,9 @@ Thierry G, Martin CD, Downing P, Pegna AJ. 2007. Controlling for interstimulus p
 
 \leavevmode\vadjust pre{\hypertarget{ref-Urgen2018}{}}%
 Urgen BA, Kutas M, Saygin AP. 2018. Uncanny valley as a window into predictive processing in the social brain. \emph{Neuropsychologia} \textbf{114}:181--185. doi:\href{https://doi.org/10.1016/j.neuropsychologia.2018.04.027}{10.1016/j.neuropsychologia.2018.04.027}
+
+\leavevmode\vadjust pre{\hypertarget{ref-Vaitonyte2023}{}}%
+Vaitonytė J, Alimardani M, Louwerse MM. 2023. Scoping review of the neural evidence on the uncanny valley. \emph{Computers in Human Behavior Reports} \textbf{9}:100263. doi:\url{https://doi.org/10.1016/j.chbr.2022.100263}
 
 \end{CSLReferences}
 
