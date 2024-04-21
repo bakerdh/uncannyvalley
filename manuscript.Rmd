@@ -2,19 +2,18 @@
 title: |
   | Neural correlates of the uncanny valley effect
   | for robots and hyper-realistic masks 
-  | (for submission to Computers in Human Behavior)
 author: |
   | Shona Fitzpatrick, Ailish K. Byrne, Alex Headley, Jet G. Sanders,
   | Helen Petrie, Rob Jenkins & Daniel H. Baker (daniel.baker@york.ac.uk)
 date: "University of York"
 output:
-  pdf_document:
-    toc: no
   bookdown::pdf_document2:
     fig_caption: yes
     toc: no
     keep_tex: yes
   word_document: default
+  pdf_document:
+    toc: no
   html_document: default
 bibliography: references.bib
 csl: elife.csl
@@ -22,11 +21,10 @@ csl: elife.csl
 
 ```{r setup, include=FALSE}
 
-processdata <- 0  # this flag determines the amount of processing, with 4 levels:
+processdata <- 0  # this flag determines the amount of processing, with 3 levels:
 # 0 - do no processing, generate the pdf using existing versions of all figures
 # 1 - generate figures using the processed group data (requires 120MB of storage)
 # 2 - do statistics and bootstrapping using processed data
-# 3 - download all raw data and do preprocessing (requires ~60GB of storage)
 
 nbootstraps <- 1000
 targetelectrodes <- c(28,54,58,64)
@@ -38,14 +36,9 @@ if (length(missingpackages)>0){install.packages(missingpackages)}
 toinstall <- packagelist[which(!packagelist %in% (.packages()))]
 invisible(lapply(toinstall,library,character.only=TRUE))
 
-rawdir <- 'local/raw/'
-rawdir <- '/Volumes/USB128/UncannyValley/'
-processeddir <- 'local/output/'
-# processeddir <- '/Volumes/USB128/UncannyValley/'
-
 if (!dir.exists('local/')){dir.create('local/')}
-# if (!dir.exists('local/robotsmvpa/')){dir.create('local/robotsmvpa/')}
-# if (!dir.exists('local/masksmvpa/')){dir.create('local/masksmvpa/')}
+if (!dir.exists('local/robotsmvpa/')){dir.create('local/robotsmvpa/')}
+if (!dir.exists('local/masksmvpa/')){dir.create('local/masksmvpa/')}
 
 
 collist <- c('lightsalmon','forestgreen','cornflowerblue')
@@ -121,8 +114,20 @@ whitenmatrix <- function(data,condid){
   W <- powerplus::Matpow(Cov,-0.5)
 return(W)}
 
-
 knitr::opts_chunk$set(echo = TRUE)
+  
+  if (!file.exists('local/channel.mat')){
+  osfproject <- osf_retrieve_node('uzbns')
+  osffiles <- osf_ls_files(osfproject)
+  fid <- which(osffiles$name=='channel.mat')
+  osf_download(osffiles[fid,], path='local/',progress=TRUE)}
+  
+  if (!file.exists('local/channeldata.csv')){
+  osfproject <- osf_retrieve_node('uzbns')
+  osffiles <- osf_ls_files(osfproject)
+  fid <- which(osffiles$name=='channeldata.csv')
+  osf_download(osffiles[fid,], path='local/',progress=TRUE)}
+  
 
 ```
 
@@ -138,7 +143,7 @@ One previous study has measured fMRI responses to moving stimuli designed to eli
 
 Our aim here was to further investigate neural correlates of the uncanny valley effect. We achieve this through two EEG experiments, in which we measure neural responses to static images. In the first experiment, the stimuli were humans, machine-like robots, and human-like robots (see Figure \ref{fig:stimexamples}a). In the second experiment we aimed to generalise the finding by using images of people wearing no masks, wearing obvious masks (e.g. carnival or Halloween masks), and wearing hyper-realistic silicone masks [@Sanders2017] (see Figure \ref{fig:stimexamples}b). Rather than focus on specific ERP components, we use a multivariate pattern classification approach to identify time windows in which information in the EEG signal can be used to distinguish between pairs of conditions. Our rationale is that timepoints where signals evoked by human faces can be distinguished from those evoked by human-like robots, or hyper-realistic masks, are candidates for a neural signature of the uncanny valley effect.
 
-```{r stimexamples, fig.cap="Illustrative stimuli from the same categories as used in Experiments 1 and 2. Row (a) shows a human face, an android and a robot, all against white backgrounds. Row (b) shows a human face, a hyper-realistic silicone mask, and a carnival mask, all against natural backgrounds. Images were taken from a variety of sources that permit reuse in academic contexts and in most cases were not part of the stimulus set from the experiments. The silicone mask image was taken by the authors, and was used in Experiment 2.", fig.align="center", echo=FALSE, fig.width=8, fig.height=8}
+```{r stimexamples, fig.cap="Illustrative stimuli from the same categories as used in Experiments 1 and 2. Row (a) shows a human face, an android and a robot, all against white backgrounds. Row (b) shows a human face, a hyper-realistic silicone mask, and a carnival mask, all against natural backgrounds. Images were taken from a variety of sources that permit reuse in academic contexts and in most cases were not part of the stimulus set from the experiments. The silicone mask image was taken by the authors, and was used in Experiment 2.", fig.align="center", out.width='80%', echo=FALSE}
 
 knitr::include_graphics('Figures/stimfigure.jpg')
 
@@ -168,7 +173,7 @@ Participants were shown all 296 images in a random order in each of three blocks
 
 ## Data analysis
 
-We analysed response data by calculating d-prime scores for each condition, derived from the hit rate and false alarm rate [@Macmillan2005]. For the human conditions, the hit rate was the proportion of human images correctly identified as human, and the false alarm rate was the proportion of robot or mask images that were incorrectly judged as being human. For the robot and mask conditions, the hit rate was the proportion of robot/mask images correctly identified as not being human, and the false alarm rate was the proportion of human images that were incorrectly judged as being non-human (note that this means the false alarm rate was the same for the robot and android conditions, and for the silicone and Halloween mask conditions). We capped infinite d-prime values (which occur e.g. when the hit rate is 1) at an arbitrary ceiling of 5. We log transformed the reaction times (which typically have positive skew) and performed all averaging and statistical analysis on the logarithmic values.
+We analysed response data by calculating d-prime ($d'$) scores for each condition, derived from the hit rate and false alarm rate [@Macmillan2005]. For the human conditions, the hit rate was the proportion of human images correctly identified as human, and the false alarm rate was the proportion of robot or mask images that were incorrectly judged as being human. For the robot and mask conditions, the hit rate was the proportion of robot/mask images correctly identified as not being human, and the false alarm rate was the proportion of human images that were incorrectly judged as being non-human (note that this means the false alarm rate was the same for the robot and android conditions, and for the silicone and Halloween mask conditions). We capped infinite d-prime values (which occur e.g. when the hit rate is 1) at an arbitrary ceiling of 5. We log transformed the reaction times (which typically have positive skew) and performed all averaging and statistical analysis on the logarithmic values.
 
 EEG signals were recorded during each block, and saved to disc for subsequent offline analysis. We used components of the EEGlab toolbox [@Delorme2004] to import the data into Matlab and collate data across blocks. We then used Brainstorm [@Tadel2011] to filter the data using a bandpass filter (0.5 to 30Hz), epoch by condition, and subtract a pre-trial baseline (the mean voltage for the 200ms before stimulus onset). Five participants were excluded from the EEG analysis of each experiment due to excessive noise. Our attempts to clean up the data from these participants using independent components analysis was unsuccessful. Their behavioural data were still included in the analysis. In Experiment 2 we combined data across all three image sizes, as this was not the main focus of our analysis.
 
@@ -348,7 +353,13 @@ save(file='local/GroupDataRobots.RData',list=c('allmeans','allmvpa','mlimits','s
 
 # create figures for experiment 1
 
-if (file.exists('local/GroupDataRobots.RData')){load('local/GroupDataRobots.RData')}  
+  if (!file.exists('local/GroupDataRobots.RData')){
+  osfproject <- osf_retrieve_node('uzbns')
+  osffiles <- osf_ls_files(osfproject)
+  fid <- which(osffiles$name=='GroupDataRobots.RData')
+  osf_download(osffiles[fid,], path='local/',progress=TRUE)}
+
+load('local/GroupDataRobots.RData')
 if (processdata > 0){
 
 pdf(paste0('Figures/RobotsData.pdf'), bg="transparent", height = 12, width = 12)
@@ -699,11 +710,11 @@ condRTs <- 10^(colMeans(meanRobotRTs)/20)
 
 ```
 
-We first explored the behavioural results for identification of human versus non-human stimuli. We calculated d-prime scores to compare sensitivity across conditions. Sensitivity was highest for identifying robots (d' = `r round(conddprimes[1],digits=2)`), but still well above chance for both the human (d' = `r round(conddprimes[3],digits=2)`) and android (d' = `r round(conddprimes[2],digits=2)`) conditions. The Bayes factor score for a one-way ANOVA comparing these three conditions indicated very substantial evidence ($log_{10}BF_{10} =$ `r round(log10(bfdprime),digits=2)`) for a difference between conditions, as illustrated in Figure \ref{fig:RobotsData}a. Pairwise Bayesian t-tests between conditions indicate very convincing differences in sensitivity between robots and androids ($log_{10}BF_{10} =$ `r round(log10(bfcontrasts[1]),digits=2)`) and robots and humans ($log_{10}BF_{10} =$ `r round(log10(bfcontrasts[2]),digits=2)`). The difference between androids and humans ($log_{10}BF_{10} =$ `r round(log10(bfcontrasts[3]),digits=2)`) was also very substantial.
+We first explored the behavioural results for identification of human versus non-human stimuli. We calculated d-prime scores to compare sensitivity across conditions. Sensitivity was highest for identifying robots ($d' =$ `r round(conddprimes[1],digits=2)`), but still well above chance for both the human ($d' =$ `r round(conddprimes[3],digits=2)`) and android ($d' =$ `r round(conddprimes[2],digits=2)`) conditions. The Bayes factor score for a one-way ANOVA comparing these three conditions indicated very substantial evidence ($log_{10}BF_{10} =$ `r round(log10(bfdprime),digits=2)`) for a difference between conditions, as illustrated in Figure \ref{fig:RobotsData}a. Pairwise Bayesian t-tests between conditions indicate very convincing differences in sensitivity between robots and androids ($log_{10}BF_{10} =$ `r round(log10(bfcontrasts[1]),digits=2)`) and robots and humans ($log_{10}BF_{10} =$ `r round(log10(bfcontrasts[2]),digits=2)`). The difference between androids and humans ($log_{10}BF_{10} =$ `r round(log10(bfcontrasts[3]),digits=2)`) was also very substantial.
 
 Reaction times also differed between conditions, though the effects were rather smaller. Reactions were fastest for identifying robots (RT = `r round(condRTs[1],digits=0)`ms), compared with humans (RT = `r round(condRTs[3],digits=0)`ms) and androids (RT = `r round(condRTs[2],digits=0)`ms). The Bayes factor score for a one-way ANOVA comparing these three conditions indicated strong evidence ($log_{10}BF_{10} =$ `r round(log10(bfRT),digits=2)`) for a difference between conditions, as illustrated in Figure \ref{fig:RobotsData}b. Pairwise Bayesian t-tests between conditions indicate very convincing differences in sensitivity between robots and androids ($log_{10}BF_{10} =$ `r round(log10(bfcontrastsRT[1]),digits=2)`) and robots and humans ($log_{10}BF_{10} =$ `r round(log10(bfcontrastsRT[2]),digits=2)`), whereas the reaction time was equivalent between androids and humans ($log_{10}BF_{10} =$ `r round(log10(bfcontrastsRT[3]),digits=2)`).
 
-```{r RobotsData, fig.cap="Summary of response data and grand mean ERP for Experiment 1. Panel (a) shows d-prime scores for identifying images of human (blue), android (green) and robot (red) faces. Small points show individual participants, and the larger symbols with error bars indicate the group mean and bootstrapped 95 percent confidence intervals. Panel (b) plots reaction times in the same format (note the logarithmic x-axis). Panel (c) shows the grant mean ERP across all participants and conditions, pooled across electrodes P6, P8, PO6 and PO8 (see inset). The shaded region around the curve illustrates the 95 percent confidence interval, and the grey rectangle at the foot indicates the stimulus duration.", fig.align="center", echo=FALSE, fig.width=12, fig.height=12}
+```{r RobotsData, fig.cap="Summary of response data and grand mean ERP for Experiment 1. Panel (a) shows d-prime scores for identifying images of human (blue), android (green) and robot (red) faces. Small points show individual participants, and the larger symbols with error bars indicate the group mean and bootstrapped 95 percent confidence intervals. Panel (b) plots reaction times in the same format (note the logarithmic x-axis). Panel (c) shows the grand mean ERP across all participants and conditions, pooled across electrodes P6, P8, PO6 and PO8 (see inset). The shaded region around the curve illustrates the 95 percent confidence interval, and the grey rectangle at the foot indicates the stimulus duration.", fig.align="center", echo=FALSE}
 
 knitr::include_graphics('Figures/RobotsData.pdf')
 
@@ -711,7 +722,7 @@ knitr::include_graphics('Figures/RobotsData.pdf')
 
 EEG activity showed a clear visually evoked potential over posterior electrode sites (see Figure \ref{fig:RobotsData}c), with typical components found in response to visual stimuli (the P100, N170 and P200 are indicated in the figure). Pairwise comparisons of conditions are shown in Figure \ref{fig:RobotsMVPA}a,b. In general there is a tendency for the ERP response to human faces to diverge slightly from the other two conditions, however the evidence for a convincing difference was not compelling. Bayes factors exceeded 3 for only a small number of time points around 300-400ms in the comparison between human and robot images (see yellow bars at y = -8 in Figure \ref{fig:RobotsMVPA}a), but these differences were small considering the variance in the data.
 
-```{r RobotsMVPA, fig.cap="Univariate and multivariate comparisons across image type. Panel (a) shows the ERPs comparing human (blue) and robot (red) face images, and panel (b) compares human (blue) and android (green) faces. Panels (c) and (d) show multivariate pattern classification accuracy for the same comparisons. Points at y = -8 and y = 25 indicate Bayes factor scores for comparisons between ERPs (a,b) and comparing classification accuracy to chance (50 percent correct; c,d).", fig.align="center", echo=FALSE, fig.width=12, fig.height=12}
+```{r RobotsMVPA, fig.cap="Univariate and multivariate comparisons across image type. Panel (a) shows the ERPs comparing human (blue) and robot (red) face images, and panel (b) compares human (blue) and android (green) faces. Panels (c) and (d) show multivariate pattern classification accuracy for the same comparisons. Points at y = -8 and y = 25 indicate Bayes factor scores for comparisons between ERPs (a,b) and comparing classification accuracy to chance (50 percent correct; c,d).", fig.align="center", echo=FALSE}
 
 knitr::include_graphics('Figures/RobotsMVPA.pdf')
 
@@ -885,15 +896,20 @@ chanlocs <- read.csv('local/channeldata.csv')
 save(file='local/GroupDataMasks.RData',list=c('allmeans','allmvpa','mlimits','subjmeanERP','limits','grandmeanERP','subjERPs','condERPs','meanMVPA','meanERP','mBF','ERP_BF','allMaskdprime','meanMaskRTs','bfdprime','bfRT','bfcontrasts','bfcontrastsRT','chanlocs','chanlabels'))
 }
 
-
-
 ```
 
 ```{r include=FALSE, results='hide'}
 
 # create figures for experiment 2
 
-if (file.exists('local/GroupDataMasks.RData')){load('local/GroupDataMasks.RData')}  
+  if (!file.exists('local/GroupDataMasks.RData')){
+  osfproject <- osf_retrieve_node('uzbns')
+  osffiles <- osf_ls_files(osfproject)
+  fid <- which(osffiles$name=='GroupDataMasks.RData')
+  osf_download(osffiles[fid,], path='local/',progress=TRUE)}
+
+load('local/GroupDataMasks.RData')
+
 if (processdata > 0){
 
 pdf(paste0('Figures/MasksData.pdf'), bg="transparent", height = 12, width = 12)
@@ -1246,9 +1262,9 @@ condRTs <- 10^(colMeans(meanMaskRTs)/20)
 
 ```
 
-The results of Experiment 2 were similar to those of Experiment 1, despite using a quite different stimulus set involving images of humans wearing masks, rather than robots. Sensitivity was highest for identifying Halloween masks (d' = `r round(conddprimes[1],digits=2)`), but still well above chance for both the human (d' = `r round(conddprimes[3],digits=2)`) and silicone mask (d' = `r round(conddprimes[2],digits=2)`) conditions. The Bayes factor score for a one-way ANOVA comparing these three conditions indicated very substantial evidence ($log_{10}BF_{10} =$ `r round(log10(bfdprime),digits=2)`) for a difference between conditions, as illustrated in Figure \ref{fig:MasksData}a. Pairwise Bayesian t-tests between conditions indicate very convincing differences in sensitivity between Halloween and silicone masks ($log_{10}BF_{10} =$ `r round(log10(bfcontrasts[1]),digits=2)`) between Halloween masks and humans ($log_{10}BF_{10} =$ `r round(log10(bfcontrasts[2]),digits=2)`), and between silicone masks and humans ($log_{10}BF_{10} =$ `r round(log10(bfcontrasts[3]),digits=2)`). Unlike in Experiment 1, there were no convincing reaction time differences between conditions ($log_{10}BF_{10} =$ `r round(log10(bfRT),digits=2)`), as illustrated in Figure \ref{fig:MasksData}b.
+The results of Experiment 2 were similar to those of Experiment 1, despite using a quite different stimulus set involving images of humans wearing masks, rather than robots. Sensitivity was highest for identifying Halloween masks ($d' =$ `r round(conddprimes[1],digits=2)`), but still well above chance for both the human ($d' =$ `r round(conddprimes[3],digits=2)`) and silicone mask ($d' =$ `r round(conddprimes[2],digits=2)`) conditions. The Bayes factor score for a one-way ANOVA comparing these three conditions indicated very substantial evidence ($log_{10}BF_{10} =$ `r round(log10(bfdprime),digits=2)`) for a difference between conditions, as illustrated in Figure \ref{fig:MasksData}a. Pairwise Bayesian t-tests between conditions indicate very convincing differences in sensitivity between Halloween and silicone masks ($log_{10}BF_{10} =$ `r round(log10(bfcontrasts[1]),digits=2)`) between Halloween masks and humans ($log_{10}BF_{10} =$ `r round(log10(bfcontrasts[2]),digits=2)`), and between silicone masks and humans ($log_{10}BF_{10} =$ `r round(log10(bfcontrasts[3]),digits=2)`). Unlike in Experiment 1, there were no convincing reaction time differences between conditions ($log_{10}BF_{10} =$ `r round(log10(bfRT),digits=2)`), as illustrated in Figure \ref{fig:MasksData}b.
 
-```{r MasksData, fig.cap="Summary of response data and grand mean ERP for Experiment 2. Panel (a) shows d-prime scores for identifying images of human faces (blue), silicone masks (green) and Halloween masks (red). Small points show individual participants, and the larger symbols with error bars indicate the group mean and bootstrapped 95 percent confidence intervals. Panel (b) plots reaction times in the same format (note the logarithmic x-axis). Panel (c) shows the grant mean ERP across all participants and conditions, pooled across electrodes P6, P8, PO6 and PO8 (see inset). The shaded region around the curve illustrates the 95 percent confidence interval, and the grey rectangle at the foot indicates the stimulus duration.", fig.align="center", echo=FALSE, fig.width=12, fig.height=12}
+```{r MasksData, fig.cap="Summary of response data and grand mean ERP for Experiment 2. Panel (a) shows d-prime scores for identifying images of human faces (blue), silicone masks (green) and Halloween masks (red). Small points show individual participants, and the larger symbols with error bars indicate the group mean and bootstrapped 95 percent confidence intervals. Panel (b) plots reaction times in the same format (note the logarithmic x-axis). Panel (c) shows the grand mean ERP across all participants and conditions, pooled across electrodes P6, P8, PO6 and PO8 (see inset). The shaded region around the curve illustrates the 95 percent confidence interval, and the grey rectangle at the foot indicates the stimulus duration.", fig.align="center", echo=FALSE}
 
 knitr::include_graphics('Figures/MaskSData.pdf')
 
@@ -1256,7 +1272,7 @@ knitr::include_graphics('Figures/MaskSData.pdf')
 
 The grand average ERP waveform for Experiment 2 (see Figure \ref{fig:MasksData}c) had similar initial components as for Experiment 1. The latter portion of the waveforms differed somewhat, most likely owing to the difference in presentation duration across experiments (250ms versus 500ms). There was a substantial univariate difference in ERP response between human and Halloween mask conditions extending from around 170 to 230ms following stimulus onset (see Figure \ref{fig:MasksMVPA}a), with Bayes factors exceeding 30. Univariate differences between the human and silicone mask conditions were not compelling (see Figure \ref{fig:MasksMVPA}b).
 
-```{r MasksMVPA, fig.cap="Univariate and multivariate comparisons across image type for Experiment 2. Panel (a) shows the ERPs comparing human faces (blue) and Halloween masks (red), and panel (b) compares human faces (blue) and silicone masks (green). Panels (c) and (d) show multivariate pattern classification accuracy for the same comparisons. Points at y = -8 and y = 25 indicate Bayes factor scores for comparisons between ERPs (a,b) and comparing classification accuracy to chance (50 percent correct; c,d).", fig.align="center", echo=FALSE, fig.width=12, fig.height=12}
+```{r MasksMVPA, fig.cap="Univariate and multivariate comparisons across image type for Experiment 2. Panel (a) shows the ERPs comparing human faces (blue) and Halloween masks (red), and panel (b) compares human faces (blue) and silicone masks (green). Panels (c) and (d) show multivariate pattern classification accuracy for the same comparisons. Points at y = -8 and y = 25 indicate Bayes factor scores for comparisons between ERPs (a,b) and comparing classification accuracy to chance (50 percent correct; c,d).", fig.align="center", echo=FALSE}
 
 knitr::include_graphics('Figures/MaskSMVPA.pdf')
 
