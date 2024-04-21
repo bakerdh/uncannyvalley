@@ -1266,7 +1266,7 @@ The results of Experiment 2 were similar to those of Experiment 1, despite using
 
 ```{r MasksData, fig.cap="Summary of response data and grand mean ERP for Experiment 2. Panel (a) shows d-prime scores for identifying images of human faces (blue), silicone masks (green) and Halloween masks (red). Small points show individual participants, and the larger symbols with error bars indicate the group mean and bootstrapped 95 percent confidence intervals. Panel (b) plots reaction times in the same format (note the logarithmic x-axis). Panel (c) shows the grand mean ERP across all participants and conditions, pooled across electrodes P6, P8, PO6 and PO8 (see inset). The shaded region around the curve illustrates the 95 percent confidence interval, and the grey rectangle at the foot indicates the stimulus duration.", fig.align="center", echo=FALSE}
 
-knitr::include_graphics('Figures/MaskSData.pdf')
+knitr::include_graphics('Figures/MasksData.pdf')
 
 ```
 
@@ -1274,7 +1274,7 @@ The grand average ERP waveform for Experiment 2 (see Figure \ref{fig:MasksData}c
 
 ```{r MasksMVPA, fig.cap="Univariate and multivariate comparisons across image type for Experiment 2. Panel (a) shows the ERPs comparing human faces (blue) and Halloween masks (red), and panel (b) compares human faces (blue) and silicone masks (green). Panels (c) and (d) show multivariate pattern classification accuracy for the same comparisons. Points at y = -8 and y = 25 indicate Bayes factor scores for comparisons between ERPs (a,b) and comparing classification accuracy to chance (50 percent correct; c,d).", fig.align="center", echo=FALSE}
 
-knitr::include_graphics('Figures/MaskSMVPA.pdf')
+knitr::include_graphics('Figures/MasksMVPA.pdf')
 
 ```
 
