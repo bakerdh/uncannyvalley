@@ -205,10 +205,8 @@ if (processdata > 1){
   unzip('local/robotsmvpa.zip',exdir='local/',overwrite=TRUE)
   }
   if (!file.exists('local/responsedata/301trialorderRobots.mat')){
-  osfproject <- osf_retrieve_node('uzbns')
-  osffiles <- osf_ls_files(osfproject)
-  fid <- which(osffiles$name=='responsedata.zip')
-  osf_download(osffiles[fid,], path='local/',progress=TRUE)
+  osffiles <- osf_retrieve_file('fvsq8')
+  osf_download(osffiles, path='local/',progress=TRUE,conflicts='overwrite')
   unzip('local/responsedata.zip',exdir='local/',overwrite=TRUE)
   }
   comparisons <- matrix(c(1,2,1,3,2,3),nrow=3,ncol=2,byrow=TRUE)
@@ -761,13 +759,11 @@ if (processdata > 1){
   osf_download(osffiles[fid,], path='local/',progress=TRUE)
   unzip('local/masksmvpa.zip',exdir='local/',overwrite=TRUE)
   }
-  if (!file.exists('local/responsedata/351trialorderMasks.mat')){
-  osfproject <- osf_retrieve_node('uzbns')
-  osffiles <- osf_ls_files(osfproject)
-  fid <- which(osffiles$name=='responsedata.zip')
-  osf_download(osffiles[fid,], path='local/',progress=TRUE)
+    if (!file.exists('local/responsedata/351trialorderMasks.mat')){
+  osffiles <- osf_retrieve_file('fvsq8')
+  osf_download(osffiles, path='local/',progress=TRUE,conflicts='overwrite')
   unzip('local/responsedata.zip',exdir='local/',overwrite=TRUE)
-  }
+    }
   
 datafiles <- dir(processeddir,pattern='*decoding.mat',full.names=TRUE)    
 allmvpa <- array(0,dim=c(length(datafiles),3,1201))  
