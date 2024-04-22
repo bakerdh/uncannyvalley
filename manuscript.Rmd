@@ -21,7 +21,7 @@ csl: elife.csl
 
 ```{r setup, include=FALSE}
 
-processdata <- 1  # this flag determines the amount of processing, with 3 levels:
+processdata <- 2  # this flag determines the amount of processing, with 3 levels:
 # 0 - do no processing, generate the pdf using existing versions of all figures
 # 1 - generate figures using the processed group data (requires 120MB of storage)
 # 2 - do statistics and bootstrapping using processed data
@@ -197,6 +197,20 @@ excludelist <- c(2,4,5,9,13)
 
 if (processdata > 1){
   
+  if (!file.exists('local/robotsmvpa/301_101.mat')){
+  osfproject <- osf_retrieve_node('uzbns')
+  osffiles <- osf_ls_files(osfproject)
+  fid <- which(osffiles$name=='robotsmvpa.zip')
+  osf_download(osffiles[fid,], path='local/',progress=TRUE)
+  unzip('local/robotsmvpa.zip',exdir='local/',overwrite=TRUE)
+  }
+  if (!file.exists('local/responsedata/301trialorderRobots.mat')){
+  osfproject <- osf_retrieve_node('uzbns')
+  osffiles <- osf_ls_files(osfproject)
+  fid <- which(osffiles$name=='responsedata.zip')
+  osf_download(osffiles[fid,], path='local/',progress=TRUE)
+  unzip('local/responsedata.zip',exdir='local/',overwrite=TRUE)
+  }
   comparisons <- matrix(c(1,2,1,3,2,3),nrow=3,ncol=2,byrow=TRUE)
 
 datafiles <- dir(processeddir,pattern='*decoding.mat',full.names=TRUE)    
@@ -229,7 +243,7 @@ allmeans <- allmeans[-excludelist,,,]
   allRobottrialcounts <- matrix(0,nrow=29,ncol=3)
 
   for (s in 1:29){
-    data <- readMat(paste0('local/RawData/Experiment 1/',s+300,'/',s+300,'trialorderRobots.mat'))
+    data <- readMat(paste0('local/responsedata/',s+300,'trialorderRobots.mat'))
     
     trialorder <- data$R[5][[1]]
     responses <- data$R[7][[1]]
@@ -739,6 +753,21 @@ processeddir <- 'local/masksmvpa/'
 excludelist <- c(3,16,24,26,29)
 
 if (processdata > 1){
+
+  if (!file.exists('local/masksmvpa/351_101.mat')){
+  osfproject <- osf_retrieve_node('uzbns')
+  osffiles <- osf_ls_files(osfproject)
+  fid <- which(osffiles$name=='masksmvpa.zip')
+  osf_download(osffiles[fid,], path='local/',progress=TRUE)
+  unzip('local/masksmvpa.zip',exdir='local/',overwrite=TRUE)
+  }
+  if (!file.exists('local/responsedata/351trialorderMasks.mat')){
+  osfproject <- osf_retrieve_node('uzbns')
+  osffiles <- osf_ls_files(osfproject)
+  fid <- which(osffiles$name=='responsedata.zip')
+  osf_download(osffiles[fid,], path='local/',progress=TRUE)
+  unzip('local/responsedata.zip',exdir='local/',overwrite=TRUE)
+  }
   
 datafiles <- dir(processeddir,pattern='*decoding.mat',full.names=TRUE)    
 allmvpa <- array(0,dim=c(length(datafiles),3,1201))  
@@ -770,7 +799,7 @@ allmeans <- allmeans[-excludelist,,,]
   allMasktrialcounts <- matrix(0,nrow=30,ncol=3)
 
   for (s in 1:30){
-    data <- readMat(paste0('local/RawData/Experiment 2/',s+350,'/trialorderMasks.mat'))
+    data <- readMat(paste0('local/responsedata/',s+350,'trialorderMasks.mat'))
     
     trialorder <- data$R[7][[1]]
     responses <- data$R[9][[1]]
