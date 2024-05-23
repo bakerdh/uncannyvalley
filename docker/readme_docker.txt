@@ -16,7 +16,7 @@ Instructions:
 2. Next download the Dockerfile from the project GitHub repository and place it in a subdirectory of your root user directory called 'docker'
 
 3. Run the docker file by entering the following in a terminal:
-docker build -t parents -f docker/Dockerfile .
+docker build -t uncannyvalley -f docker/Dockerfile .
 
 4. Once the image has finished building, launch a container in Docker desktop by clicking the play icon
 
