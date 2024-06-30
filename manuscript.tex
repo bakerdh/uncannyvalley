@@ -64,33 +64,43 @@
 \providecommand{\tightlist}{%
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 \setcounter{secnumdepth}{5}
+% definitions for citeproc citations
+\NewDocumentCommand\citeproctext{}{}
+\NewDocumentCommand\citeproc{mm}{%
+  \begingroup\def\citeproctext{#2}\cite{#1}\endgroup}
+\makeatletter
+ % allow citations to break across lines
+ \let\@cite@ofmt\@firstofone
+ % avoid brackets around text for \cite:
+ \def\@biblabel#1{}
+ \def\@cite#1#2{{#1\if@tempswa , #2\fi}}
+\makeatother
 \newlength{\cslhangindent}
 \setlength{\cslhangindent}{1.5em}
 \newlength{\csllabelwidth}
 \setlength{\csllabelwidth}{3em}
-\newlength{\cslentryspacingunit} % times entry-spacing
-\setlength{\cslentryspacingunit}{\parskip}
-\newenvironment{CSLReferences}[2] % #1 hanging-ident, #2 entry spacing
- {% don't indent paragraphs
-  \setlength{\parindent}{0pt}
+\newenvironment{CSLReferences}[2] % #1 hanging-indent, #2 entry-spacing
+ {\begin{list}{}{%
+  \setlength{\itemindent}{0pt}
+  \setlength{\leftmargin}{0pt}
+  \setlength{\parsep}{0pt}
   % turn on hanging indent if param 1 is 1
   \ifodd #1
-  \let\oldpar\par
-  \def\par{\hangindent=\cslhangindent\oldpar}
+   \setlength{\leftmargin}{\cslhangindent}
+   \setlength{\itemindent}{-1\cslhangindent}
   \fi
   % set entry spacing
-  \setlength{\parskip}{#2\cslentryspacingunit}
- }%
- {}
+  \setlength{\itemsep}{#2\baselineskip}}}
+ {\end{list}}
 \usepackage{calc}
-\newcommand{\CSLBlock}[1]{#1\hfill\break}
-\newcommand{\CSLLeftMargin}[1]{\parbox[t]{\csllabelwidth}{#1}}
-\newcommand{\CSLRightInline}[1]{\parbox[t]{\linewidth - \csllabelwidth}{#1}\break}
+\newcommand{\CSLBlock}[1]{\hfill\break\parbox[t]{\linewidth}{\strut\ignorespaces#1\strut}}
+\newcommand{\CSLLeftMargin}[1]{\parbox[t]{\csllabelwidth}{\strut#1\strut}}
+\newcommand{\CSLRightInline}[1]{\parbox[t]{\linewidth - \csllabelwidth}{\strut#1\strut}}
 \newcommand{\CSLIndent}[1]{\hspace{\cslhangindent}#1}
 \ifLuaTeX
   \usepackage{selnolig}  % disable illegal ligatures
 \fi
-\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\usepackage{bookmark}
 \IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
 \urlstyle{same}
 \hypersetup{
@@ -99,43 +109,27 @@
 
 \title{Neural correlates of the uncanny valley effect\\
 for robots and hyper-realistic masks}
-\author{Shona Fitzpatrick\(^1\), Ailish K. Byrne\(^2\), Alex Headley\(^1\), Jet G. Sanders\(^3\),\\
-Helen Petrie\(^4\), Rob Jenkins\(^1\) \& Daniel H. Baker\(^{1,5}\)}
-\date{}
+\author{}
+\date{\vspace{-2.5em}}
 
 \begin{document}
 \maketitle
 
-\begin{enumerate}
-\def\labelenumi{\arabic{enumi}.}
-\tightlist
-\item
-  Department of Psychology, University of York, York, UK
-\item
-  School of Medicine, Keele University, Newcastle-under-Lyme, Staffordshire, UK
-\item
-  Department of Psychological and Behavioural Science, London School of Economics, London, UK
-\item
-  Department of Computer Science, University of York, York, UK
-\item
-  Corresponding author, email: daniel.baker@york.ac.uk
-\end{enumerate}
+{[}\textbf{Author information redacted for blind peer review}{]}
 
-\hypertarget{abstract}{%
-\section{Abstract}\label{abstract}}
+\section{Abstract}\label{abstract}
 
-Viewing artificial objects and images that are designed to appear human can elicit a sense of unease, referred to as the `uncanny valley' effect. Here we investigate neural correlates of the uncanny valley, using still images of androids (robots designed to look human), and hyper-realistic silicone masks, in two independent experiments. In both cases, human-like stimuli were harder to distinguish from real human faces than examples that were clearly not designed to mimic humans (mechanical robots, and Halloween masks). Stimulus evoked potentials did not show convincing differences between faces and either androids or realistic masks when using traditional univariate statistical tests. However, a more sensitive multivariate analysis identified two regions of above-chance decoding, indicating neural differences in the response between human faces and androids/realistic masks. The first time window was around 100-200ms post stimulus onset, and most likely corresponds to low-level image differences between conditions. The second time window was around 600ms post stimulus onset, and may reflect top-down processing, and perhaps correspond to the subjective sense of unease characteristic of the uncanny valley effect. Objective neural components might be used in future to rapidly train generative artificial intelligence systems to produce more realistic images that are perceived as natural by human observers.
+Viewing artificial objects and images that are designed to appear human can elicit a sense of unease, referred to as the `uncanny valley' effect. Here we investigate neural correlates of the uncanny valley, using still images of androids (robots designed to look human), and humans wearing hyper-realistic silicone masks, as well as still images of real humans, in two experiments. In both experiments, human-like stimuli were harder to distinguish from real human faces than stimuli that were clearly not designed to mimic humans but contain facial features (mechanical robots and Halloween masks). Stimulus evoked potentials did not show convincing differences between faces and either androids or realistic masks when using traditional univariate statistical tests. However, a more sensitive multivariate analysis identified two regions of above-chance decoding, indicating neural differences in the response between human faces and androids/realistic masks. The first time window was around 100-200ms post stimulus onset, and most likely corresponds to low-level image differences between conditions. The second time window was around 600ms post stimulus onset, and may reflect top-down processing, and may correspond to the subjective sense of unease characteristic of the uncanny valley effect. Objective neural components might be used in future to rapidly train generative artificial intelligence systems to produce more realistic images that are perceived as natural by human observers.
 
-\hypertarget{introduction}{%
-\section{Introduction}\label{introduction}}
+\section{Introduction}\label{introduction}
 
-Many people report an aversion to entities that are superficially human-like, but on closer inspection are actually artificial. Examples include humanoid robots (androids), puppets, hyper-realistic masks, and computer-generated images or movies. The term `uncanny valley' (Mori, 1970; English translation in Mori et al., 2012) describes the idea that entities that are clearly human or clearly artificial do not evoke unease, whereas artificial entities that are human-like are disconcerting. Understanding these experiences is increasingly important as artificial entities become more integrated into our everyday lives, however at present relatively little is known about the neural underpinnings of the uncanny valley effect (for a recent review, see Vaitonytė et al., 2023).
+Many people report an aversion to entities that are superficially human-like, but on closer inspection turn out to be artificial. Examples include humanoid robots (androids), puppets, hyper-realistic masks (Sanders \& Jenkins, 2021), and computer-generated images or movies. The term `uncanny valley' (Mori, 1970; English translation in Mori et al., 2012) describes the idea that clearly human or clearly artificial entities do not evoke unease, whereas artificial entities that are human-like are disconcerting. Understanding these experiences is increasingly important as artificial entities become more integrated into our everyday lives. However at present relatively little is known about the neural underpinnings of the uncanny valley effect (for a recent review, see Vaitonytė et al., 2023).
 
-Neural responses to faces and bodies in general are well-characterised, and there appear to be specialised brain regions devoted to both (reviewed in Hu et al., 2020). For example, areas of the occipital lobe (Gauthier et al., 2000) and fusiform gyrus (Kanwisher et al., 1997) respond more to faces than non-face stimuli, and sections of extrastriate cortex are responsive to bodies (Downing et al., 2001). There are also event-related potential (ERP) signals associated with face and body stimuli, though their precise purpose is still debated (Thierry et al., 2007). It seems highly likely that `uncanny' images will activate these same processes, yet it is unclear whether the sense of unease they produce occurs at bottom-up sensory stages, or is modulated by more top-down cognitive factors.
+Neural responses to faces and bodies in general are well-characterised, and there appear to be specialised brain regions devoted to both (reviewed in Hu et al., 2020). For example, areas of the occipital lobe (Gauthier et al., 2000) and fusiform gyrus (Kanwisher et al., 1997) respond more to faces than non-face stimuli, and sections of extrastriate cortex are responsive to bodies (Downing et al., 2001). There are also event-related potential (ERP) signals associated with face and body stimuli, though their precise role is still debated (Hong et al., 2022; Thierry et al., 2007). It seems highly likely that `uncanny' images will activate these same processes, yet it is unclear whether the sense of unease they produce occurs at bottom-up sensory stages or is modulated by more top-down cognitive factors.
 
-One previous study by Saygin et al. (2012) measured fMRI responses to moving stimuli designed to elicit an uncanny valley effect. They found repetition suppression effects in action-specific brain regions responding to movies of androids that had a biological appearance, but mechanical motion. These effects were stronger than for movies of humans or mechanical robots performing the same actions. A more recent electroencephalography (EEG) study (Urgen et al., 2018) identified a difference in the N400 component between dynamic and static conditions using the same stimuli. Although this difference was strongest over frontal electrodes, source reconstruction of the N400 itself suggested a left-lateralised source in temporo-parietal cortex, consistent with the fMRI results (Saygin et al., 2012). The authors interpret both of these findings as being due to the discrepancy between the human-like appearance and the clearly non-biological motion of the robot.
+One previous study by Saygin et al. (2012) measured fMRI responses to moving stimuli designed to elicit an uncanny valley effect. They found repetition suppression effects\footnote{Repetition suppression is a phenomenon in which the neural responses to repeated presentations of identical or similar stimuli is reduced relative to the response on the first presentation.} in action-specific brain regions responding to movies of androids that had a biological appearance, but mechanical motion. These effects were stronger than for movies of humans or mechanical robots performing the same actions. A more recent electroencephalography (EEG) study (Urgen et al., 2018) identified a difference in the N400 component\footnote{The N400 is an electromagnetic brain potential obtained 400ms after stimulus onset, typically over centro-parietal electrodes. It has been proposed to reflect the extent to which the stimulus presented was surprising or unexpected.} between dynamic and static conditions using the same stimuli. Although this difference was strongest over frontal electrodes, source reconstruction of the N400 itself suggested a left-lateralised source in the temporo-parietal cortex, consistent with the fMRI results (Saygin et al., 2012). The authors interpret both of these findings as being due to the discrepancy between the human-like appearance and the clearly non-biological motion of the robot.
 
-Our aim here was to further investigate neural correlates of the uncanny valley effect. We achieve this through two EEG experiments, in which we measure neural responses to static images. In the first experiment, the stimuli were humans, machine-like robots, and human-like robots (see Figure \ref{fig:stimexamples}a). In the second experiment we aimed to generalise the finding by using images of people wearing no masks, wearing obvious masks (e.g.~carnival or Halloween masks), and wearing hyper-realistic silicone masks (Sanders et al., 2017) (see Figure \ref{fig:stimexamples}b). Rather than focus on specific ERP components, we use a multivariate pattern classification approach to identify time windows in which information in the EEG signal can be used to distinguish between pairs of conditions. Our rationale is that timepoints where signals evoked by human faces can be distinguished from those evoked by human-like robots, or hyper-realistic masks, are candidates for a neural signature of the uncanny valley effect.
+Our aim was to further investigate neural correlates of the uncanny valley effect. We achieved this through two EEG experiments, in which we measured neural responses to static images. In the first experiment, the stimuli were still images of humans, machine-like robots, and human-like robots (see Figure \ref{fig:stimexamples}a). In the second experiment we aimed to generalise the finding by using images of people wearing no masks, wearing obvious masks (e.g.~Halloween masks), and wearing hyper-realistic silicone masks (Sanders et al., 2017) (see Figure \ref{fig:stimexamples}b). Rather than focus on specific ERP components, we use a multivariate pattern classification approach to identify time windows in which information in the EEG signal can be used to distinguish between pairs of conditions. Our rationale is that timepoints where signals evoked by human faces can be distinguished from those evoked by human-like robots, or hyper-realistic masks, are candidates for a neural signature of the uncanny valley effect.
 
 \begin{figure}
 
@@ -143,58 +137,52 @@ Our aim here was to further investigate neural correlates of the uncanny valley 
 
 }
 
-\caption{Illustrative stimuli from the same categories as used in Experiments 1 and 2. Row (a) shows a human face, an android and a robot, all against white backgrounds. Row (b) shows a human face, a hyper-realistic silicone mask, and a carnival mask, all against natural backgrounds. Images were taken from a variety of sources that permit reuse in academic contexts and in most cases were not part of the stimulus set from the experiments. The silicone mask image was taken by the authors, and was used in Experiment 2.}\label{fig:stimexamples}
+\caption{Illustrative stimuli from the same categories as used in Experiments 1 and 2. Row (a) shows a human face, an android and a robot, all against white backgrounds. Row (b) shows a human face, a hyper-realistic silicone mask, and a Halloween mask, all against natural backgrounds. Images were taken from a variety of sources that permit reuse in academic contexts and in most cases were not part of the stimulus set from the experiments. The silicone mask image was taken by the authors, and was used in Experiment 2.}\label{fig:stimexamples}
 \end{figure}
 
-\hypertarget{materials-methods}{%
-\section{Materials \& Methods}\label{materials-methods}}
+\section{Materials \& Methods}\label{materials-methods}
 
-\hypertarget{participants}{%
-\subsection{Participants}\label{participants}}
+\subsection{Participants}\label{participants}
 
-A total of 29 participants completed Experiment 1 (12 male, 17 female), and 30 participants completed Experiment 2 (7 male, 23 female). None of the participants had previously taken part in a study using these stimuli, and all were naïve to the hypotheses and wore their normal optical correction if required. Written informed consent was collected before each experiment began, and all procedures were approved by the Ethics committee of the Department of Psychology at the University of York.
+A total of 29 participants completed Experiment 1 (12 male, 17 female), and 30 different participants completed Experiment 2 (7 male, 23 female). None of the participants had previously taken part in a study using these stimuli, and all were naïve to the hypotheses and wore their normal optical correction if required. Written informed consent was collected before each experiment began, and all procedures were approved by the Ethics committee of {[}\textbf{redacted for blind peer review}{]}.
 
-\hypertarget{apparatus-stimuli}{%
-\subsection{Apparatus \& stimuli}\label{apparatus-stimuli}}
+\subsection{Apparatus \& stimuli}\label{apparatus-stimuli}
 
-In Experiment 1, the stimulus set consisted of a total of 90 images, evenly split between three categories: real faces, human-like robots, and mechanical robots. Images all showed the head and shoulders of the subject, had white backgrounds, and were sourced from the internet. In Experiment 2, the stimulus set consisted of a total of 296 images, comprising real faces (148 images), people wearing silicone masks (74 images), and people wearing obvious masks of the sort typically worn for carnivals and Halloween celebrations (74 images). The backgrounds of these images were more heterogeneous, and showed the natural surroundings of the subject. In both experiments, images involved examples of both genders, and of varied ethnic backgrounds.
+In Experiment 1, the stimulus set consisted of a total of 90 images, evenly split between three categories: real faces, human-like robots, and mechanical robots. Images all showed the head and shoulders of the subject, had white backgrounds, and were sourced from the internet. In Experiment 2, the stimulus set (first described by Sanders et al. (2019), but here including additional images) consisted of a total of 296 images, comprising real faces (148 images), people wearing silicone masks (74 images), and people wearing obvious masks of the sort typically worn for carnivals and Halloween celebrations (74 images). The backgrounds of these images were more heterogeneous, and showed the natural surroundings of the subject. In both experiments, images involved examples of both genders, and of varied ethnic backgrounds.
 
 All stimuli were displayed on a ViewPixx display running at 120Hz, controlled by an Apple Macintosh computer. The display was gamma corrected using a photometer to ensure that the luminance output was linear. EEG data were collected using a 64-channel Waveguard cap and an ANT Neuroscan system, sampling at 1kHz. Low latency digital triggers were sent between the display and the EEG amplifier using an 8-bit parallel cable.
 
-\hypertarget{procedure}{%
-\subsection{Procedure}\label{procedure}}
+\subsection{Procedure}\label{procedure}
 
-\hypertarget{experiment-1-robots}{%
-\subsubsection{Experiment 1: robots}\label{experiment-1-robots}}
+\subsubsection{Experiment 1: Robots}\label{experiment-1-robots}
 
 Each participant completed three blocks of the first experiment. Within each block, all 90 stimulus images were presented twice in a random order. Stimuli subtended \(11\times11\) degrees at the viewing distance of 57cm, and were shown against a mid-grey background, with a black central fixation cross displayed throughout. The presentation duration was 500ms, and participants were asked to press a mouse button to indicate if they believed each image was of a human or of a robot/android. After each response there was a random duration blank period with a mean duration of 1000ms and a standard deviation of 200ms. Each block lasted around 6 minutes.
 
-\hypertarget{experiment-2-hyper-realistic-masks}{%
-\subsubsection{Experiment 2: hyper-realistic masks}\label{experiment-2-hyper-realistic-masks}}
+After the EEG experiment, participants also completed a series of questionnaires using the Qualtrics platform. These involved rating their perception of a subset of the stimuli (8 from each category), using items from the Godspeed questionnaire (Bartneck et al., 2009). Inspection time was unlimited. Participants also provided demographic information (age, gender) and completed the GAToRS (Koverola et al., 2022) and AQ (Baron-Cohen et al., 2001) questionnaires, however the results of these additional questionnaires are not presented here.
 
-Participants were shown all 296 images in a random order in each of three blocks. In the first block, stimuli subtended \(5.5\times7.5\) degrees of visual angle when viewed at a distance of 57cm. In the second block, stimuli doubled in size (width and height), and subtended \(11\times15\) degrees at the same viewing distance. In the third block, stimuli doubled in size again, and subtended \(22\times30\) degrees. The rationale for the size manipulation was to investigate whether increasing levels of detail made the silicone masks more identifiable (Sanders et al., 2017), however as that is not the main focus of the current paper we collapse results across size conditions. Stimuli were presented for 250ms, and participants indicated whether they thought each image contained a real face or a mask, using a two-button trackball. The button assignment (whether the left button indicated a face or a mask, and vice versa) was determined randomly for each participant, but remained constant throughout the whole experiment. Text reminding the participant of the button assignment was present continuously in the lower right corner of the screen, far from the area of the screen where the stimuli were presented. A central fixation cross was also present throughout. After each response there was a random duration blank period with a mean duration of 1000ms and a standard deviation of 200ms. Each block lasted around 8 minutes.
+\subsubsection{Experiment 2: Hyper-realistic masks}\label{experiment-2-hyper-realistic-masks}
 
-\hypertarget{data-analysis}{%
-\subsection{Data analysis}\label{data-analysis}}
+Participants were shown all 296 images in a random order in each of three blocks. In the first block, stimuli subtended \(5.5\times7.5\) degrees of visual angle when viewed at a distance of 57cm. In the second block, stimuli doubled in size (width and height), and subtended \(11\times15\) degrees at the same viewing distance. In the third block, stimuli doubled in size again, and subtended \(22\times30\) degrees. The rationale for the size manipulation was to investigate whether increasing levels of detail made the silicone masks more identifiable (Sanders et al., 2017, 2019). However as that is not the main focus of the current paper, and our preliminary analyses indicated no differences between size conditions, we collapse results across size conditions. Stimuli were presented for 250ms, and participants indicated whether they thought each image contained a real face or a mask, using a two-button trackball. The button assignment (whether the left button indicated a face or a mask, and vice versa) was determined randomly for each participant, but remained constant throughout the whole experiment. Text reminding the participant of the button assignment was present continuously in the lower right corner of the screen, far from the area of the screen where the stimuli were presented. A central fixation cross was also present throughout. After each response there was a random duration blank period with a mean duration of 1000ms and a standard deviation of 200ms. Each block lasted around 8 minutes.
 
-We analysed response data by calculating d-prime (\(d'\)) scores for each condition, derived from the hit rate and false alarm rate (Macmillan and Creelman, 2005). For the human conditions, the hit rate was the proportion of human images correctly identified as human, and the false alarm rate was the proportion of robot or mask images that were incorrectly judged as being human. For the robot and mask conditions, the hit rate was the proportion of robot/mask images correctly identified as not being human, and the false alarm rate was the proportion of human images that were incorrectly judged as being non-human (note that this means the false alarm rate was the same for the robot and android conditions, and for the silicone and Halloween mask conditions). We capped infinite d-prime values (which occur e.g.~when the hit rate is 1) at an arbitrary ceiling of 5. We log transformed the reaction times (which typically have positive skew) and performed all averaging and statistical analysis on the logarithmic values.
+An independent group of 20 participants also completed an online questionnaire in which they rated the images along various dimensions. The participants repeated the real face vs mask judgement from the main experiment, and were additionally asked to rate emotional expressiveness, realism, and uncanniness for each image using a 7-point Likert scale. Inspection time was unlimited for these judgments.
 
-EEG signals were recorded during each block, and saved to disc for subsequent offline analysis. We used components of the EEGlab toolbox (Delorme and Makeig, 2004) to import the data into Matlab and collate data across blocks. We then used Brainstorm (Tadel et al., 2011) to filter the data using a bandpass filter (0.5 to 30Hz), epoch by condition, and subtract a pre-trial baseline (the mean voltage for the 200ms before stimulus onset). Five participants were excluded from the EEG analysis of each experiment due to excessive noise. Our attempts to clean up the data from these participants using independent components analysis were unsuccessful. Their behavioural data were still included in the analysis. In Experiment 2 we combined data across all three image sizes, as this was not the main focus of our analysis.
+\subsection{Data analysis}\label{data-analysis}
+
+We analysed response data by calculating d-prime (\(d'\)) scores for each condition, derived from the hit rate and false alarm rate (Macmillan \& Creelman, 2005). For the human conditions, the hit rate was the proportion of human images correctly identified as human, and the false alarm rate was the proportion of robot or mask images that were incorrectly judged as being human. For the robot and mask conditions, the hit rate was the proportion of robot/mask images correctly identified as not being human, and the false alarm rate was the proportion of human images that were incorrectly judged as being non-human (note that this means the false alarm rate was the same for the robot and android conditions, and for the silicone and Halloween mask conditions). We capped infinite d-prime values (which occur e.g.~when the hit rate is 1) at an arbitrary ceiling of 5. We log transformed the reaction times (which typically have positive skew) and performed all averaging and statistical analysis on the logarithmic values.
+
+EEG signals were recorded during each block and saved to disc for subsequent offline analysis. We used components of the EEGlab toolbox (Delorme \& Makeig, 2004) to import the data into Matlab and collate data across blocks. We then used Brainstorm (Tadel et al., 2011) to filter the data using a bandpass filter (0.5 to 30Hz), epoch by condition, and subtract a pre-trial baseline (the mean voltage for the 200ms before stimulus onset). Five participants were excluded from the EEG analysis of each experiment due to excessive noise. Our attempts to clean up the data from these participants using independent components analysis were unsuccessful. Their behavioural data were unaffected, and therefore still included in the analysis.
 
 We performed univariate analyses by conducting Bayesian t-tests (Rouder et al., 2009) between ERPs from pairs of conditions at each time point using a JZS prior, using signals pooled across electrodes P6, P8, PO6 and PO8. The resulting Bayes factor score is a summary of the evidence in favour of either the null hypothesis (that the waveforms are equal) or the alternative hypothesis (that they differ). We use the heuristics proposed by Jeffreys (1961) that Bayes factors \textgreater3 (\(log_{10}BF_{10}\) \textgreater{} 0.5) constitute some evidence supporting the alternative hypothesis, factors \textgreater10 (\(log_{10}BF_{10}\) \textgreater{} 1) constitute strong evidence, and factors \textgreater30 (\(log_{10}BF_{10}\) \textgreater{} 1.5) constitute very strong evidence.
 
-Multivariate pattern analysis was conducted by training a linear support vector machine algorithm (LibSVM; Chang and Lin (2011)) to discriminate between patterns of activity across electrodes at a specific time point. The patterns came from the human face condition and one of the other conditions, for a single participant. Four examples of each pattern were calculated by averaging over random subsets of 20\% of the available trials from a given condition, and using these to train the classifier. The accuracy of the classifier was tested on the averaged remaining trials (that were not used in training) for each condition. This process was repeated 1000 times with different trial permutations to obtain an average accuracy, where chance performance is at 50\% correct. The analysis was carried out at all time points, and also for all participants. We then averaged classifier accuracy across participants, and calculated one sample Bayesian t-tests comparing to chance performance at each time point as described above.
+Multivariate pattern analysis was conducted by training a linear support vector machine algorithm (LibSVM, Chang \& Lin, 2011) to discriminate between patterns of activity across electrodes at a specific time point. The patterns came from the human face condition and one of the other conditions, for a single participant. Four examples of each pattern were calculated by averaging over random subsets of 20\% of the available trials from a given condition, and these were used to train the classifier. The accuracy of the classifier was tested on the remaining trials (that were not used in training) for each condition. This process was repeated 1000 times with different trial permutations to obtain an average accuracy, where chance performance is at 50\% correct. The analysis was carried out at all time points, and for each participant separately. We then averaged classifier accuracy across participants, and calculated one sample Bayesian t-tests comparing to chance performance at each time point as described above.
 
-\hypertarget{data-and-code-availability}{%
-\subsection{Data and code availability}\label{data-and-code-availability}}
+\subsection{Data and code availability}\label{data-and-code-availability}
 
-Raw data, processed data, and analysis scripts are freely available through the project repository at: \url{https://doi.org/10.17605/OSF.IO/5NZ2H}
+Raw data, processed data, and analysis scripts are freely available through the project repository at: {[}\textbf{redacted for blind peer review}{]}
 
-\hypertarget{results}{%
-\section{Results}\label{results}}
+\section{Results}\label{results}
 
-\hypertarget{experiment-1}{%
-\subsection{Experiment 1}\label{experiment-1}}
+\subsection{Experiment 1}\label{experiment-1}
 
 We first explored the behavioural results for identification of human versus non-human stimuli. We calculated d-prime scores to compare sensitivity across conditions. Sensitivity was highest for identifying robots (\(d' =\) 4), but still well above chance for both the human (\(d' =\) 2.72) and android (\(d' =\) 2.27) conditions. The Bayes factor score for a one-way ANOVA comparing these three conditions indicated very substantial evidence (\(log_{10}BF_{10} =\) 6.67) for a difference between conditions, as illustrated in Figure \ref{fig:RobotsData}a. Pairwise Bayesian t-tests between conditions indicate very convincing differences in sensitivity between robots and androids (\(log_{10}BF_{10} =\) 7.15) and robots and humans (\(log_{10}BF_{10} =\) 6.27). The difference between androids and humans (\(log_{10}BF_{10} =\) 5.58) was also very substantial.
 
@@ -209,7 +197,7 @@ Reaction times also differed between conditions, though the effects were rather 
 \caption{Summary of response data and grand mean ERP for Experiment 1. Panel (a) shows d-prime scores for identifying images of human (blue), android (green) and robot (red) faces. Small points show individual participants, and the larger symbols with error bars indicate the group mean and bootstrapped 95 percent confidence intervals. Panel (b) plots reaction times in the same format (note the logarithmic x-axis). Panel (c) shows the grand mean ERP across all participants and conditions, pooled across electrodes P6, P8, PO6 and PO8 (see inset). The shaded region around the curve illustrates the 95 percent confidence interval, and the grey rectangle at the foot indicates the stimulus duration.}\label{fig:RobotsData}
 \end{figure}
 
-EEG activity showed a clear visually evoked potential over posterior electrode sites (see Figure \ref{fig:RobotsData}c), with typical components found in response to visual stimuli (the P100, N170 and P200 are indicated in the figure). Pairwise comparisons of conditions are shown in Figure \ref{fig:RobotsMVPA}a,b. In general there is a tendency for the ERP response to human faces to diverge slightly from the other two conditions, however the evidence for a convincing difference was not compelling. Bayes factors exceeded 3 for only a small number of time points around 300-400ms in the comparison between human and robot images (see yellow bars at y = -8 in Figure \ref{fig:RobotsMVPA}a), but these differences were small considering the variance in the data.
+EEG activity showed a clear visually evoked potential over posterior electrode sites (see Figure \ref{fig:RobotsData}c), with typical components found in response to visual stimuli pooled across all conditions (the P100, N170 and P200 are indicated in the figure). Pairwise comparisons of conditions are shown in Figure \ref{fig:RobotsMVPA}a,b. In general there is a tendency for the ERP response to human faces to diverge slightly from the other two conditions (Geiger \& Balas, 2021), however the evidence for this divergence was not compelling. Bayes factors exceeded 3 for only a small number of time points around 300-400ms in the comparison between human and robot images (see yellow bars at y = -8 in Figure \ref{fig:RobotsMVPA}a), but these differences were small considering the variance in the data.
 
 \begin{figure}
 
@@ -222,8 +210,18 @@ EEG activity showed a clear visually evoked potential over posterior electrode s
 
 We also conducted multivariate pattern analysis independently at each time-point for the same two comparisons. The evoked responses for human and robot images caused sufficiently distinct patterns of voltages across the scalp that the pattern classifier could distinguish them from around 100 ms following stimulus onset, with accuracy up to 72\% correct (see Figure \ref{fig:RobotsMVPA}c). Bayes factors exceeded 30 for much of the time window between 100 and 800 ms, indicating that the decoding was meaningfully above chance performance (50\% correct). It was also possible to classify between human and android images (see Figure \ref{fig:RobotsMVPA}d), however performance was much poorer, with a maximum of 62\% correct. Classification accuracy had an initial peak around 100ms that provided compelling evidence for above chance classification (BF\textgreater30), and a later region of above-chance classification between 500 and 700ms. In the Discussion we speculate that these two time periods might correspond to distinct types of signal associated with the uncanny valley. However we first sought to generalise our results to a different stimulus set, and next report the results of Experiment 2 which used hyper-realistic silicone masks.
 
-\hypertarget{experiment-2}{%
-\subsection{Experiment 2}\label{experiment-2}}
+Finally, we analysed the rating data from a set of 10 questionnaire items for 8 stimuli from each category. The results are summarised in Figure \ref{fig:robotratings}, and in general show differences between stimulus categories along most dimensions. Of particular note, the U-shaped function predicted by the uncanny valley effect was apparent for ratings along the Dislike-Like (Figure \ref{fig:robotratings}d), Unfriendly-Friendly (Figure \ref{fig:robotratings}e), and Anxious-Relaxed (Figure \ref{fig:robotratings}i) dimensions. These are all dimensions with emotional valence, indicating support for the `uncanniness' of our android stimuli. However we note that the android and robot categories were typically rated as being more similar to each other than to the real human faces.
+
+\begin{figure}
+
+{\centering \includegraphics[width=0.5\linewidth]{Figures/RobotRatings} 
+
+}
+
+\caption{Ratings of stimuli using items from the Godspeed questionnaire. Each rating was on a Likert scale from 1-5, and was the average of ratings from 8 stimulus examples. Dots show individual participant scores, with the larger symbols indicating the mean and 95\% bootstrapped confidence intervals.}\label{fig:robotratings}
+\end{figure}
+
+\subsection{Experiment 2}\label{experiment-2}
 
 The results of Experiment 2 were similar to those of Experiment 1, despite using a quite different stimulus set involving images of humans wearing masks, rather than robots. Sensitivity was highest for identifying Halloween masks (\(d' =\) 4.01), but still well above chance for both the human (\(d' =\) 2.52) and silicone mask (\(d' =\) 1.29) conditions. The Bayes factor score for a one-way ANOVA comparing these three conditions indicated very substantial evidence (\(log_{10}BF_{10} =\) 13.34) for a difference between conditions, as illustrated in Figure \ref{fig:MasksData}a. Pairwise Bayesian t-tests between conditions indicate very convincing differences in sensitivity between Halloween and silicone masks (\(log_{10}BF_{10} =\) 9.71) between Halloween masks and humans (\(log_{10}BF_{10} =\) 11.59), and between silicone masks and humans (\(log_{10}BF_{10} =\) 5.19). Unlike in Experiment 1, there were no convincing reaction time differences between conditions (\(log_{10}BF_{10} =\) -0.8), as illustrated in Figure \ref{fig:MasksData}b.
 
@@ -249,104 +247,137 @@ The grand average ERP waveform for Experiment 2 (see Figure \ref{fig:MasksData}c
 
 Multivariate pattern analysis revealed extremely high classification accuracy (up to 97\% correct) comparing human faces with Halloween masks. This was convincingly above chance, with a Bayes factor score exceeding 30 from around 100ms following stimulus onset, and extending across the full time window (see Figure \ref{fig:MasksMVPA}c). Classification was also convincingly above chance when comparing human faces with silicone masks (Figure \ref{fig:MasksMVPA}d). This timecourse had an initial peak of high accuracy (up to 76\% correct) between 100 and 200ms after stimulus onset, followed by a second peak around 600ms. This replicates the finding from Experiment 1 that uncanny valley responses might involve two distinct components at different moments in time.
 
-\hypertarget{discussion}{%
-\section{Discussion}\label{discussion}}
+We subsequently obtained ratings from an independent sample of 20 participants using the same stimuli as in the main experiment. This time, we asked for explicit ratings of emotional expressiveness, realism, and uncanniness, as well as repeating the binary real face vs mask rating. Real faces were rated highest for emotional expressiveness (M=3.9) and realism (M=5.9), and lowest for uncanniness (M=2.7) (Figure \ref{fig:maskratings}a-c). The realistic silicone masks were rated highest for uncanniness (M=4.5), however this was not dramatically higher than for the Halloween masks (M=4.3). Arguably making judgements of uncanniness is less appropriate for masks that are not intended to be realistic, though our data do qualitatively conform to the U-shaped function expected by the uncanny valley hypothesis. The pattern of d-prime scores (Figure \ref{fig:maskratings}d) was similar to those obtained in the main experiment (Figure \ref{fig:MasksData}b), with generally higher scores attributable to the unlimited inspection time permitted here.
 
-Across two experiments using diverse stimuli, we identified a potential neurophysiological signature of the `uncanny valley' effect. EEG responses to androids or silicone masks could be distinguished from responses to human faces at around 100ms after stimulus onset, and also in a later time window around 500-800ms after stimulus onset. There were no clear differences in the unimodal ERP response at posterior electrodes, but performance of a multivariate pattern classifier was above chance in these time windows. This is a different pattern from that observed for more obviously non-human stimuli (robots and Halloween masks), where there were both univariate and multivariate differences, and the multivariate discrimination accuracy was above chance for an extended time window. Perceptual judgements indicated that identification performance for uncanny valley stimuli was relatively poor, indicating confusion with real human images. The similarity in results across our two experiments is striking, and constitutes an internal conceptual replication of our main findings.
+\begin{figure}
 
-Our early time window when pattern classification is above chance corresponds approximately to the P100 and N170 components of the ERP. Similar early components have also been investigated in other ERP studies on the uncanny valley effect (Mustafa and Magnor, 2016; Schindler et al., 2017). This time window is unlikely to be modulated substantially by top-down influences, so we attribute the early component to image-based differences between stimulus categories (Coggan et al., 2016). ERP components in later time windows have also been studied in previous work (Cheetham et al., 2015; Mustafa et al., 2017; Urgen et al., 2018). Differences between stimulus categories at these times are more amenable to top-down influences, and most likely involve higher brain areas outside of occipital cortex. We therefore predict that ERP components at later time points should correspond with perceptual judgements and reports of uncanniness - this is a worthwhile hypothesis for future work to investigate.
+{\centering \includegraphics[width=0.7\linewidth]{Figures/MaskRatings} 
 
-Our use of hyper-realistic silicone masks is novel in the context of the study of uncanny valley effects. Previous studies using these masks have demonstrated that they are difficult to distinguish from real faces (Sanders et al., 2017), including in applied settings such as simulated passport control (Robertson et al., 2020), and showing large individual differences (Sanders and Jenkins, 2018). Image analysis indicates that good identification performance of silicone masks is typically based on attention to the region below the eyes (Sanders and Jenkins, 2018), however it is plausible that many observers are not explicitly aware of the cues they use to perform this judgement. This might contribute to both the early and late components identified in this study, and presumably also to the subjective sensation of `uncanniness' that is characteristic of the phenomenon.
+}
+
+\caption{Additional ratings of mask images, completed by an independent sample (N=20) with unlimited inspection time. Images were rated on three dimensions using seven-point scales (panels a-c), and also judged as being either a real face or a mask, from which d-prime scores were calculated (panel d).}\label{fig:maskratings}
+\end{figure}
+
+\section{Discussion}\label{discussion}
+
+Across two experiments using diverse stimuli, we identified a potential neurophysiological signature of the `uncanny valley' effect. EEG responses to androids or silicone masks could be distinguished from responses to human faces at around 100ms after stimulus onset, and also in a later time window around 500-800ms after stimulus onset. There were no clear differences in the unimodal ERP response at posterior electrodes, but performance of a multivariate pattern classifier was above chance in these time windows. This is a different pattern from that observed for more obviously non-human stimuli (robots and Halloween masks), where there were both univariate and multivariate differences, and the multivariate discrimination accuracy was above chance for an extended time window. Perceptual judgements indicated that identification performance for uncanny valley stimuli was relatively poor, indicating confusion with real human images. The similarity in results across our two experiments is striking and constitutes an internal conceptual replication of our main findings.
+
+The early time window when pattern classification is above chance corresponds approximately to the P100 and N170 components of the ERP. Similar early components have also been investigated in other ERP studies on the uncanny valley effect (Mustafa \& Magnor, 2016; Schindler et al., 2017), and comparing human and robot faces (Geiger \& Balas, 2021). This time window is unlikely to be modulated substantially by top-down influences, so we attribute the early component to image-based differences between stimulus categories (Coggan et al., 2016). ERP components in later time windows have also been studied in previous work (Cheetham et al., 2015; Mustafa et al., 2017; Urgen et al., 2018). Differences between stimulus categories at these times are more amenable to top-down influences, and most likely involve higher brain areas outside of occipital cortex. We therefore predict that ERP components at later time points should correspond with perceptual judgements and reports of uncanniness - this is a worthwhile hypothesis for future work to investigate.
+
+Our use of hyper-realistic silicone masks is novel in the context of the study of uncanny valley effects. Previous studies using these masks have demonstrated that they are difficult to distinguish from real faces (Sanders et al., 2017, 2019), including in applied settings such as simulated passport control (Robertson et al., 2020, 2024), and show large individual differences (Sanders \& Jenkins, 2018). Image analysis indicates that good identification performance of silicone masks is typically based on attention to the region below the eyes (Sanders \& Jenkins, 2018), however it is plausible that many observers are not explicitly aware of the cues they use to perform this judgement. This might contribute to both the early and late components identified in this study, and presumably also to the subjective sensation of `uncanniness' that is characteristic of the phenomenon.
 
 Another increasingly common situation that triggers the `uncanny valley' experience is in the domain of computer-generated images and movies. Artificial intelligence algorithms are now able to generate images and movies based on text prompts (for example ``a picture of a girl flying a kite in a field'') that often include human subjects. However, at time of writing, images of humans often contain errors, such as the presence of too many limbs, digits, teeth etc. Synthetic movies often contain continuity errors, and have issues reproducing biological motion. Many of these errors are subtle and take time to spot, but it is also the case that human observers can report that images look `wrong' without explicitly knowing why. The neural uncanny valley effect that we report here might prove a useful index of these instinctive reactions, and could even potentially be used to improve artificial intelligence algorithms. For example, images could be penalised for producing neural responses that differed from those for natural images.
 
-\hypertarget{conclusions}{%
-\section{Conclusions}\label{conclusions}}
+More generally, the advantage of measuring neural responses to `uncanny valley' stimuli is that, without requiring conscious awareness or behavioural responses, they can facilitate detection of near-human stimuli. These types of near-human stimuli are becoming increasingly common in impersonation and identity evasion cases (Sanders \& Jenkins, 2021). Simultaneously, we observe a growing market for reducing the uncanny valley effect for the benefit of android and robot integration. Exploring the potential of non-invasive brain recordings will benefit various applied fields as a result.
+
+\section{Conclusions}\label{conclusions}
 
 We have identified neural correlates of the uncanny valley effect that are consistent across two experiments, using androids and hyper-realistic silicone masks. In both cases, perceptual discrimination from real human faces was possible, but more challenging than discriminating from mechanical robots or Halloween masks. Univariate differences in the ERP signal were unconvincing, but a more sensitive multivariate classification analysis identified differences at both early (100-200ms) and later (around 600ms) time points. These findings suggest the importance of both bottom up and top down influences on the subjective experience of the uncanny valley.
 
-\hypertarget{acknowledgements}{%
-\section{Acknowledgements}\label{acknowledgements}}
+\section{Acknowledgements}\label{acknowledgements}
 
-SF was funded by a YorRobots Venables internship. Also supported by BBSRC grant BB/V007580/1 awarded to DHB. ANY OTHER GRANTS TO ACKNOWLEDGE HERE?
+{[}\textbf{redacted for blind peer review}{]}
 
-\hypertarget{references}{%
-\section*{References}\label{references}}
+\section*{References}\label{references}
 \addcontentsline{toc}{section}{References}
 
-\hypertarget{refs}{}
+\phantomsection\label{refs}
 \begin{CSLReferences}{1}{0}
-\leavevmode\vadjust pre{\hypertarget{ref-Chang2011}{}}%
-Chang C-C, Lin C-J. 2011. {LIBSVM} : A library for support vector machines. \emph{ACM Transactions on Intelligent Systems and Technology} \textbf{2(27)}:1--27.
+\bibitem[\citeproctext]{ref-Baron-Cohen2001}
+Baron-Cohen, S., Wheelwright, S., Skinner, R., Martin, J., \& Clubley, E. (2001). The autism-spectrum quotient (AQ): Evidence from asperger syndrome/high-functioning autism, males and females, scientists and mathematicians. \emph{J Autism Dev Disord}, \emph{31}(1), 5--17. \url{https://doi.org/10.1023/a:1005653411471}
 
-\leavevmode\vadjust pre{\hypertarget{ref-Cheetham2015}{}}%
-Cheetham M, Wu L, Pauli P, Jancke L. 2015. Arousal, valence, and the uncanny valley: Psychophysiological and self-report findings. \emph{Front Psychol} \textbf{6}:981. doi:\href{https://doi.org/10.3389/fpsyg.2015.00981}{10.3389/fpsyg.2015.00981}
+\bibitem[\citeproctext]{ref-Bartneck2009}
+Bartneck, C., Kulić, D., Croft, E., \& Zoghbi, S. (2009). Measurement instruments for the anthropomorphism, animacy, likeability, perceived intelligence, and perceived safety of robots. \emph{International Journal of Social Robotics}, \emph{1}(1), 71--81. \url{https://doi.org/10.1007/s12369-008-0001-3}
 
-\leavevmode\vadjust pre{\hypertarget{ref-Coggan2016}{}}%
-Coggan DD, Baker DH, Andrews TJ. 2016. The role of visual and semantic properties in the emergence of category-specific patterns of neural response in the human brain. \emph{eNeuro} \textbf{3}. doi:\href{https://doi.org/10.1523/ENEURO.0158-16.2016}{10.1523/ENEURO.0158-16.2016}
+\bibitem[\citeproctext]{ref-Chang2011}
+Chang, C.-C., \& Lin, C.-J. (2011). {LIBSVM} : A library for support vector machines. \emph{ACM Transactions on Intelligent Systems and Technology}, \emph{2(27)}, 1--27.
 
-\leavevmode\vadjust pre{\hypertarget{ref-Delorme2004}{}}%
-Delorme A, Makeig S. 2004. {EEGLAB}: An open source toolbox for analysis of single-trial {EEG} dynamics including independent component analysis. \emph{J Neurosci Methods} \textbf{134}:9--21. doi:\href{https://doi.org/10.1016/j.jneumeth.2003.10.009}{10.1016/j.jneumeth.2003.10.009}
+\bibitem[\citeproctext]{ref-Cheetham2015}
+Cheetham, M., Wu, L., Pauli, P., \& Jancke, L. (2015). Arousal, valence, and the uncanny valley: Psychophysiological and self-report findings. \emph{Front Psychol}, \emph{6}, 981. \url{https://doi.org/10.3389/fpsyg.2015.00981}
 
-\leavevmode\vadjust pre{\hypertarget{ref-Downing2001}{}}%
-Downing PE, Jiang Y, Shuman M, Kanwisher N. 2001. A cortical area selective for visual processing of the human body. \emph{Science} \textbf{293}:2470--3. doi:\href{https://doi.org/10.1126/science.1063414}{10.1126/science.1063414}
+\bibitem[\citeproctext]{ref-Coggan2016}
+Coggan, D. D., Baker, D. H., \& Andrews, T. J. (2016). The role of visual and semantic properties in the emergence of category-specific patterns of neural response in the human brain. \emph{eNeuro}, \emph{3}(4). \url{https://doi.org/10.1523/ENEURO.0158-16.2016}
 
-\leavevmode\vadjust pre{\hypertarget{ref-Gauthier2000}{}}%
-Gauthier I, Tarr MJ, Moylan J, Skudlarski P, Gore JC, Anderson AW. 2000. The fusiform "face area" is part of a network that processes faces at the individual level. \emph{J Cogn Neurosci} \textbf{12}:495--504. doi:\href{https://doi.org/10.1162/089892900562165}{10.1162/089892900562165}
+\bibitem[\citeproctext]{ref-Delorme2004}
+Delorme, A., \& Makeig, S. (2004). {EEGLAB}: An open source toolbox for analysis of single-trial {EEG} dynamics including independent component analysis. \emph{J Neurosci Methods}, \emph{134}(1), 9--21. \url{https://doi.org/10.1016/j.jneumeth.2003.10.009}
 
-\leavevmode\vadjust pre{\hypertarget{ref-Hu2020}{}}%
-Hu Y, Baragchizadeh A, O'Toole AJ. 2020. Integrating faces and bodies: Psychological and neural perspectives on whole person perception. \emph{Neurosci Biobehav Rev} \textbf{112}:472--486. doi:\href{https://doi.org/10.1016/j.neubiorev.2020.02.021}{10.1016/j.neubiorev.2020.02.021}
+\bibitem[\citeproctext]{ref-Downing2001}
+Downing, P. E., Jiang, Y., Shuman, M., \& Kanwisher, N. (2001). A cortical area selective for visual processing of the human body. \emph{Science}, \emph{293}(5539), 2470--2473. \url{https://doi.org/10.1126/science.1063414}
 
-\leavevmode\vadjust pre{\hypertarget{ref-Jeffreys1961}{}}%
-Jeffreys H. 1961. Theory of probability, 3rd ed. Oxford University Press, Clarendon Press.
+\bibitem[\citeproctext]{ref-Gauthier2000}
+Gauthier, I., Tarr, M. J., Moylan, J., Skudlarski, P., Gore, J. C., \& Anderson, A. W. (2000). The fusiform "face area" is part of a network that processes faces at the individual level. \emph{J Cogn Neurosci}, \emph{12}(3), 495--504. \url{https://doi.org/10.1162/089892900562165}
 
-\leavevmode\vadjust pre{\hypertarget{ref-Kanwisher1997}{}}%
-Kanwisher N, McDermott J, Chun MM. 1997. The fusiform face area: A module in human extrastriate cortex specialized for face perception. \emph{J Neurosci} \textbf{17}:4302--11. doi:\href{https://doi.org/10.1523/JNEUROSCI.17-11-04302.1997}{10.1523/JNEUROSCI.17-11-04302.1997}
+\bibitem[\citeproctext]{ref-Geiger2021}
+Geiger, A. R., \& Balas, B. (2021). Robot faces elicit responses intermediate to human faces and objects at face-sensitive ERP components. \emph{Sci Rep}, \emph{11}(1), 17890. \url{https://doi.org/10.1038/s41598-021-97527-6}
 
-\leavevmode\vadjust pre{\hypertarget{ref-Macmillan2005}{}}%
-Macmillan NA, Creelman CD. 2005. Detection theory: A user's guide. Psychology Press.
+\bibitem[\citeproctext]{ref-Hong2022}
+Hong, Y., Mayes, M. S., Munasinghe, A. P., \& Ratner, K. G. (2022). Scrutinizing whether mere group membership influences the N170 response to faces: Results from two preregistered event-related potential studies. \emph{J Cogn Neurosci}, \emph{34}(11), 1999--2015. \url{https://doi.org/10.1162/jocn_a_01887}
 
-\leavevmode\vadjust pre{\hypertarget{ref-Mori1970}{}}%
-Mori M. 1970. The uncanny valley. \emph{Energy} \textbf{7}:33--35.
+\bibitem[\citeproctext]{ref-Hu2020}
+Hu, Y., Baragchizadeh, A., \& O'Toole, A. J. (2020). Integrating faces and bodies: Psychological and neural perspectives on whole person perception. \emph{Neurosci Biobehav Rev}, \emph{112}, 472--486. \url{https://doi.org/10.1016/j.neubiorev.2020.02.021}
 
-\leavevmode\vadjust pre{\hypertarget{ref-Mori2012}{}}%
-Mori M, MacDorman KF, Kageki N. 2012. The uncanny valley {[}from the field{]}. \emph{IEEE Robotics \& Automation Magazine} \textbf{19}:98--100. doi:\href{https://doi.org/10.1109/MRA.2012.2192811}{10.1109/MRA.2012.2192811}
+\bibitem[\citeproctext]{ref-Jeffreys1961}
+Jeffreys, H. (1961). \emph{Theory of probability} (3rd ed.). Oxford University Press, Clarendon Press.
 
-\leavevmode\vadjust pre{\hypertarget{ref-Mustafa2017}{}}%
-Mustafa M, Guthe S, Tauscher J-P, Goesele M, Magnor M. 2017. How human am i?: EEG-based evaluation of virtual charactersProceedings of the 2017 CHI Conference on Human Factors in Computing Systems, CHI 17. ACM. doi:\href{https://doi.org/10.1145/3025453.3026043}{10.1145/3025453.3026043}
+\bibitem[\citeproctext]{ref-Kanwisher1997}
+Kanwisher, N., McDermott, J., \& Chun, M. M. (1997). The fusiform face area: A module in human extrastriate cortex specialized for face perception. \emph{J Neurosci}, \emph{17}(11), 4302--4311. \url{https://doi.org/10.1523/JNEUROSCI.17-11-04302.1997}
 
-\leavevmode\vadjust pre{\hypertarget{ref-Mustafa2016}{}}%
-Mustafa M, Magnor M. 2016. EEG based analysis of the perception of computer-generated faces.Proceedings of the 13th European Conference on Visual Media Production (CVMP 2016), CVMP 2016. ACM. doi:\href{https://doi.org/10.1145/2998559.2998563}{10.1145/2998559.2998563}
+\bibitem[\citeproctext]{ref-Koverola2022}
+Koverola, M., Kunnari, A., Sundvall, J., \& Laakasuo, M. (2022). General attitudes towards robots scale (GAToRS): A new instrument for social surveys. \emph{International Journal of Social Robotics}, \emph{14}(7), 1559--1581. \url{https://doi.org/10.1007/s12369-022-00880-3}
 
-\leavevmode\vadjust pre{\hypertarget{ref-Robertson2020}{}}%
-Robertson DJ, Sanders JG, Towler A, Kramer RSS, Spowage J, Byrne A, Burton AM, Jenkins R. 2020. Hyper-realistic face masks in a live passport-checking task. \emph{Perception} \textbf{49}:298--309. doi:\href{https://doi.org/10.1177/0301006620904614}{10.1177/0301006620904614}
+\bibitem[\citeproctext]{ref-Macmillan2005}
+Macmillan, N. A., \& Creelman, C. D. (2005). \emph{Detection theory: A user's guide}. Psychology Press.
 
-\leavevmode\vadjust pre{\hypertarget{ref-Rouder2009}{}}%
-Rouder JN, Speckman PL, Sun D, Morey RD, Iverson G. 2009. Bayesian t tests for accepting and rejecting the null hypothesis. \emph{Psychon Bull Rev} \textbf{16}:225--37. doi:\href{https://doi.org/10.3758/PBR.16.2.225}{10.3758/PBR.16.2.225}
+\bibitem[\citeproctext]{ref-Mori1970}
+Mori, M. (1970). The uncanny valley. \emph{Energy}, \emph{7}, 33--35.
 
-\leavevmode\vadjust pre{\hypertarget{ref-Sanders2018}{}}%
-Sanders JG, Jenkins R. 2018. Individual differences in hyper-realistic mask detection. \emph{Cogn Res Princ Implic} \textbf{3}:24. doi:\href{https://doi.org/10.1186/s41235-018-0118-3}{10.1186/s41235-018-0118-3}
+\bibitem[\citeproctext]{ref-Mori2012}
+Mori, M., MacDorman, K. F., \& Kageki, N. (2012). The uncanny valley {[}from the field{]}. \emph{IEEE Robotics \& Automation Magazine}, \emph{19}(2), 98--100. \url{https://doi.org/10.1109/MRA.2012.2192811}
 
-\leavevmode\vadjust pre{\hypertarget{ref-Sanders2017}{}}%
-Sanders JG, Ueda Y, Minemoto K, Noyes E, Yoshikawa S, Jenkins R. 2017. Hyper-realistic face masks: A new challenge in person identification. \emph{Cognitive Research: Principles and Implications} \textbf{2}. doi:\href{https://doi.org/10.1186/s41235-017-0079-y}{10.1186/s41235-017-0079-y}
+\bibitem[\citeproctext]{ref-Mustafa2017}
+Mustafa, M., Guthe, S., Tauscher, J.-P., Goesele, M., \& Magnor, M. (2017, May). How human am i?: EEG-based evaluation of virtual characters. \emph{Proceedings of the 2017 CHI Conference on Human Factors in Computing Systems}. \url{https://doi.org/10.1145/3025453.3026043}
 
-\leavevmode\vadjust pre{\hypertarget{ref-Saygin2012}{}}%
-Saygin AP, Chaminade T, Ishiguro H, Driver J, Frith C. 2012. The thing that should not be: Predictive coding and the uncanny valley in perceiving human and humanoid robot actions. \emph{Soc Cogn Affect Neurosci} \textbf{7}:413--22. doi:\href{https://doi.org/10.1093/scan/nsr025}{10.1093/scan/nsr025}
+\bibitem[\citeproctext]{ref-Mustafa2016}
+Mustafa, M., \& Magnor, M. (2016, December). EEG based analysis of the perception of computer-generated faces. \emph{Proceedings of the 13th European Conference on Visual Media Production (CVMP 2016)}. \url{https://doi.org/10.1145/2998559.2998563}
 
-\leavevmode\vadjust pre{\hypertarget{ref-Schindler2017}{}}%
-Schindler S, Zell E, Botsch M, Kissler J. 2017. Differential effects of face-realism and emotion on event-related brain potentials and their implications for the uncanny valley theory. \emph{Sci Rep} \textbf{7}:45003. doi:\href{https://doi.org/10.1038/srep45003}{10.1038/srep45003}
+\bibitem[\citeproctext]{ref-Robertson2024}
+Robertson, D. J., Davis, J. P., Sanders, J. G., \& Towler, A. (2024). The super-recogniser advantage extends to the detection of hyper-realistic face masks. \emph{In Press}. \url{https://doi.org/10.31234/osf.io/u2kja}
 
-\leavevmode\vadjust pre{\hypertarget{ref-Tadel2011}{}}%
-Tadel F, Baillet S, Mosher JC, Pantazis D, Leahy RM. 2011. Brainstorm: A user-friendly application for MEG/EEG analysis. \emph{Comput Intell Neurosci} \textbf{2011}:879716. doi:\href{https://doi.org/10.1155/2011/879716}{10.1155/2011/879716}
+\bibitem[\citeproctext]{ref-Robertson2020}
+Robertson, D. J., Sanders, J. G., Towler, A., Kramer, R. S. S., Spowage, J., Byrne, A., Burton, A. M., \& Jenkins, R. (2020). Hyper-realistic face masks in a live passport-checking task. \emph{Perception}, \emph{49}(3), 298--309. \url{https://doi.org/10.1177/0301006620904614}
 
-\leavevmode\vadjust pre{\hypertarget{ref-Thierry2007}{}}%
-Thierry G, Martin CD, Downing P, Pegna AJ. 2007. Controlling for interstimulus perceptual variance abolishes N170 face selectivity. \emph{Nat Neurosci} \textbf{10}:505--11. doi:\href{https://doi.org/10.1038/nn1864}{10.1038/nn1864}
+\bibitem[\citeproctext]{ref-Rouder2009}
+Rouder, J. N., Speckman, P. L., Sun, D., Morey, R. D., \& Iverson, G. (2009). Bayesian t tests for accepting and rejecting the null hypothesis. \emph{Psychon Bull Rev}, \emph{16}(2), 225--237. \url{https://doi.org/10.3758/PBR.16.2.225}
 
-\leavevmode\vadjust pre{\hypertarget{ref-Urgen2018}{}}%
-Urgen BA, Kutas M, Saygin AP. 2018. Uncanny valley as a window into predictive processing in the social brain. \emph{Neuropsychologia} \textbf{114}:181--185. doi:\href{https://doi.org/10.1016/j.neuropsychologia.2018.04.027}{10.1016/j.neuropsychologia.2018.04.027}
+\bibitem[\citeproctext]{ref-Sanders2018}
+Sanders, J. G., \& Jenkins, R. (2018). Individual differences in hyper-realistic mask detection. \emph{Cogn Res Princ Implic}, \emph{3}, 24. \url{https://doi.org/10.1186/s41235-018-0118-3}
 
-\leavevmode\vadjust pre{\hypertarget{ref-Vaitonyte2023}{}}%
-Vaitonytė J, Alimardani M, Louwerse MM. 2023. Scoping review of the neural evidence on the uncanny valley. \emph{Computers in Human Behavior Reports} \textbf{9}:100263. doi:\url{https://doi.org/10.1016/j.chbr.2022.100263}
+\bibitem[\citeproctext]{ref-Sanders2021}
+Sanders, J. G., \& Jenkins, R. (2021). Realistic masks in the real world. In M. Bindemann (Ed.), \emph{{Forensic Face Matching: Research and Practice}}. Oxford University Press. \url{https://doi.org/10.1093/oso/9780198837749.003.0010}
+
+\bibitem[\citeproctext]{ref-Sanders2017}
+Sanders, J. G., Ueda, Y., Minemoto, K., Noyes, E., Yoshikawa, S., \& Jenkins, R. (2017). Hyper-realistic face masks: A new challenge in person identification. \emph{Cognitive Research: Principles and Implications}, \emph{2}(1). \url{https://doi.org/10.1186/s41235-017-0079-y}
+
+\bibitem[\citeproctext]{ref-Sanders2019}
+Sanders, J. G., Ueda, Y., Yoshikawa, S., \& Jenkins, R. (2019). More human than human: A turing test for photographed faces. \emph{Cogn Res Princ Implic}, \emph{4}(1), 43. \url{https://doi.org/10.1186/s41235-019-0197-9}
+
+\bibitem[\citeproctext]{ref-Saygin2012}
+Saygin, A. P., Chaminade, T., Ishiguro, H., Driver, J., \& Frith, C. (2012). The thing that should not be: Predictive coding and the uncanny valley in perceiving human and humanoid robot actions. \emph{Soc Cogn Affect Neurosci}, \emph{7}(4), 413--422. \url{https://doi.org/10.1093/scan/nsr025}
+
+\bibitem[\citeproctext]{ref-Schindler2017}
+Schindler, S., Zell, E., Botsch, M., \& Kissler, J. (2017). Differential effects of face-realism and emotion on event-related brain potentials and their implications for the uncanny valley theory. \emph{Sci Rep}, \emph{7}, 45003. \url{https://doi.org/10.1038/srep45003}
+
+\bibitem[\citeproctext]{ref-Tadel2011}
+Tadel, F., Baillet, S., Mosher, J. C., Pantazis, D., \& Leahy, R. M. (2011). Brainstorm: A user-friendly application for MEG/EEG analysis. \emph{Comput Intell Neurosci}, \emph{2011}, 879716. \url{https://doi.org/10.1155/2011/879716}
+
+\bibitem[\citeproctext]{ref-Thierry2007}
+Thierry, G., Martin, C. D., Downing, P., \& Pegna, A. J. (2007). Controlling for interstimulus perceptual variance abolishes N170 face selectivity. \emph{Nat Neurosci}, \emph{10}(4), 505--511. \url{https://doi.org/10.1038/nn1864}
+
+\bibitem[\citeproctext]{ref-Urgen2018}
+Urgen, B. A., Kutas, M., \& Saygin, A. P. (2018). Uncanny valley as a window into predictive processing in the social brain. \emph{Neuropsychologia}, \emph{114}, 181--185. \url{https://doi.org/10.1016/j.neuropsychologia.2018.04.027}
+
+\bibitem[\citeproctext]{ref-Vaitonyte2023}
+Vaitonytė, J., Alimardani, M., \& Louwerse, M. M. (2023). Scoping review of the neural evidence on the uncanny valley. \emph{Computers in Human Behavior Reports}, \emph{9}, 100263. https://doi.org/\url{https://doi.org/10.1016/j.chbr.2022.100263}
 
 \end{CSLReferences}
 
