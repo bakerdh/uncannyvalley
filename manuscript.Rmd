@@ -129,12 +129,10 @@ filelist <- c('channel.mat','channeldata.csv','maskquestionnairelong.csv','robot
 for (f in 1:length(filelist)){
   if (!file.exists(paste0('local/',filelist[f]))){
   osfproject <- osf_retrieve_node('uzbns')
-  osffiles <- osf_ls_files(osfproject)
+  osffiles <- osf_ls_files(osfproject,n_max=100)
   fid <- which(osffiles$name==filelist[f])
   osf_download(osffiles[fid,], path='local/',progress=TRUE)}
 }  
-
-
 
 ```
 
@@ -379,7 +377,7 @@ save(file='local/GroupDataRobots.RData',list=c('allmeans','allmvpa','mlimits','s
 
   if (!file.exists('local/GroupDataRobots.RData')){
   osfproject <- osf_retrieve_node('uzbns')
-  osffiles <- osf_ls_files(osfproject)
+  osffiles <- osf_ls_files(osfproject,n_max=100)
   fid <- which(osffiles$name=='GroupDataRobots.RData')
   osf_download(osffiles[fid,], path='local/',progress=TRUE)}
 
@@ -1034,7 +1032,7 @@ save(file='local/GroupDataMasks.RData',list=c('allmeans','allmvpa','mlimits','su
 
   if (!file.exists('local/GroupDataMasks.RData')){
   osfproject <- osf_retrieve_node('uzbns')
-  osffiles <- osf_ls_files(osfproject)
+  osffiles <- osf_ls_files(osfproject,n_max=100)
   fid <- which(osffiles$name=='GroupDataMasks.RData')
   osf_download(osffiles[fid,], path='local/',progress=TRUE)}
 
