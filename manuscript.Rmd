@@ -3,11 +3,11 @@ title: |
   | Neural correlates of the uncanny valley effect
   | for robots and hyper-realistic masks 
 output:
+  word_document: default
   bookdown::pdf_document2:
     fig_caption: yes
     toc: no
     keep_tex: yes
-  word_document: default
   pdf_document:
     toc: no
   html_document: default
